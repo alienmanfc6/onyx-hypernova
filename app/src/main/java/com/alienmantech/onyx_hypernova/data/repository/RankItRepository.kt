@@ -1,5 +1,9 @@
 package com.alienmantech.onyx_hypernova.data.repository
 
+import androidx.room.withTransaction
+import com.alienmantech.onyx_hypernova.data.backup.BackupFile
+import com.alienmantech.onyx_hypernova.data.backup.BackupItem
+import com.alienmantech.onyx_hypernova.data.backup.BackupList
 import com.alienmantech.onyx_hypernova.data.db.*
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -7,6 +11,7 @@ import javax.inject.Singleton
 
 @Singleton
 class RankItRepository @Inject constructor(
+    private val db: RankItDatabase,
     private val listDao: RankedListDao,
     private val itemDao: RankedItemDao,
     private val tagDao: TagDao
@@ -70,6 +75,44 @@ class RankItRepository @Inject constructor(
             val existing = tagDao.getTagByName(trimmed)
             val tagId = existing?.id ?: tagDao.insertTag(TagEntity(name = trimmed))
             tagDao.insertCrossRef(ItemTagCrossRef(itemId, tagId))
+        }
+    }
+
+    // ── Backup ─────────────────────────────────────────────────────────────
+
+    suspend fun exportBackup(): BackupFile {
+        val lists = listDao.getAllListsOnce()
+        return BackupFile(lists = lists.map { list ->
+            val items = itemDao.getItemsForListOnce(list.id)
+            BackupList(
+                name = list.name,
+                createdAt = list.createdAt,
+                updatedAt = list.updatedAt,
+                items = items.map { item ->
+                    BackupItem(
+                        name = item.name,
+                        position = item.position,
+                        color = item.color,
+                        tags = tagDao.getTagsForItemOnce(item.id).map { it.name }
+                    )
+                }
+            )
+        })
+    }
+
+    suspend fun importBackup(backup: BackupFile) = db.withTransaction {
+        listDao.deleteAllLists()
+        tagDao.deleteAllTags()
+        backup.lists.forEach { bl ->
+            val listId = listDao.insertList(
+                RankedListEntity(name = bl.name, createdAt = bl.createdAt, updatedAt = bl.updatedAt)
+            )
+            bl.items.forEach { bi ->
+                val itemId = itemDao.insertItem(
+                    RankedItemEntity(listId = listId, name = bi.name, position = bi.position, color = bi.color)
+                )
+                setTagsForItem(itemId, bi.tags)
+            }
         }
     }
 

@@ -1,0 +1,1 @@
+-keep class com.alienmantech.onyx_hypernova.data.backup.** { *; }

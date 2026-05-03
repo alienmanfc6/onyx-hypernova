@@ -75,4 +75,7 @@ dependencies {
 
     // Drag-and-drop
     implementation(libs.reorderable)
+
+    // JSON serialization for backup
+    implementation(libs.gson)
 }

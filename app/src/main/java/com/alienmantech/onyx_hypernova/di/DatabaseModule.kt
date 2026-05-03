@@ -1,5 +1,6 @@
 package com.alienmantech.onyx_hypernova.di
 
+import android.content.ContentResolver
 import android.content.Context
 import androidx.room.Room
 import com.alienmantech.onyx_hypernova.data.db.MIGRATION_1_2
@@ -34,4 +35,9 @@ object DatabaseModule {
 
     @Provides
     fun provideTagDao(db: RankItDatabase): TagDao = db.tagDao()
+
+    @Provides
+    @Singleton
+    fun provideContentResolver(@ApplicationContext context: Context): ContentResolver =
+        context.contentResolver
 }

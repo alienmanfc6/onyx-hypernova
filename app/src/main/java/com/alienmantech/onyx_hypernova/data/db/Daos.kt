@@ -20,6 +20,12 @@ interface RankedListDao {
 
     @Delete
     suspend fun deleteList(list: RankedListEntity)
+
+    @Query("SELECT * FROM ranked_lists")
+    suspend fun getAllListsOnce(): List<RankedListEntity>
+
+    @Query("DELETE FROM ranked_lists")
+    suspend fun deleteAllLists()
 }
 
 @Dao
@@ -45,6 +51,9 @@ interface RankedItemDao {
 
     @Query("UPDATE ranked_items SET color = :color WHERE id = :itemId")
     suspend fun updateItemColor(itemId: Long, color: String?)
+
+    @Query("SELECT * FROM ranked_items WHERE listId = :listId")
+    suspend fun getItemsForListOnce(listId: Long): List<RankedItemEntity>
 }
 
 @Dao
@@ -70,4 +79,10 @@ interface TagDao {
 
     @Query("DELETE FROM item_tag_cross_ref WHERE itemId = :itemId")
     suspend fun clearTagsForItem(itemId: Long)
+
+    @Query("SELECT t.* FROM tags t INNER JOIN item_tag_cross_ref x ON t.id = x.tagId WHERE x.itemId = :itemId")
+    suspend fun getTagsForItemOnce(itemId: Long): List<TagEntity>
+
+    @Query("DELETE FROM tags")
+    suspend fun deleteAllTags()
 }

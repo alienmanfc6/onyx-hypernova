@@ -310,3 +310,25 @@ fun ConfirmDeleteDialog(
         }
     )
 }
+
+@Composable
+fun ConfirmImportDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val inkColor = notePadInkColor()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text("Import Backup") },
+        text = { Text("This will permanently replace all current lists, items, and tags. This cannot be undone.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Import", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = inkColor) }
+        }
+    )
+}
