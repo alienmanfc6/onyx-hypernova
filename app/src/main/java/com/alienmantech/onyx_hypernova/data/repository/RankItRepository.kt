@@ -70,7 +70,7 @@ class RankItRepository @Inject constructor(
     suspend fun setTagsForItem(itemId: Long, tagNames: List<String>) {
         tagDao.clearTagsForItem(itemId)
         tagNames.forEach { name ->
-            val trimmed = name.trim().lowercase()
+            val trimmed = name.trim()
             if (trimmed.isBlank()) return@forEach
             val existing = tagDao.getTagByName(trimmed)
             val tagId = existing?.id ?: tagDao.insertTag(TagEntity(name = trimmed))

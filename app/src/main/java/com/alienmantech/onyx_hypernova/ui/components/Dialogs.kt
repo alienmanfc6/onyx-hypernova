@@ -97,10 +97,11 @@ fun TagPickerContent(
     val inkColor = notePadInkColor()
     val fieldColor = MaterialTheme.colorScheme.surfaceVariant
     val chipColor = MaterialTheme.colorScheme.surfaceVariant
+    val selectedTagsLower = selectedTags.map { it.lowercase() }.toSet()
 
     fun addTag(tag: String) {
-        val trimmed = tag.trim().lowercase()
-        if (trimmed.isNotBlank() && !selectedTags.contains(trimmed)) {
+        val trimmed = tag.trim()
+        if (trimmed.isNotBlank() && trimmed.lowercase() !in selectedTagsLower) {
             onTagsChanged(selectedTags + trimmed)
         }
         newTagText = ""
@@ -144,7 +145,7 @@ fun TagPickerContent(
                 placeholder = { Text("New tag") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
+                    capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = { addTag(newTagText) }),
@@ -163,7 +164,7 @@ fun TagPickerContent(
         }
 
         // Suggestions: previously used tags not already selected
-        val suggestions = allTags.filter { it !in selectedTags }
+        val suggestions = allTags.filter { it.lowercase() !in selectedTagsLower }
         if (suggestions.isNotEmpty()) {
             Text(
                 "Suggestions",
