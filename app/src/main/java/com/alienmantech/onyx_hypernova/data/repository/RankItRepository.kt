@@ -65,7 +65,19 @@ class RankItRepository @Inject constructor(
 
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
 
+    fun getTagSummaries(): Flow<List<TagSummary>> = tagDao.getTagSummaries()
+
     fun getTagsForItem(itemId: Long): Flow<List<TagEntity>> = tagDao.getTagsForItem(itemId)
+
+    suspend fun createTag(name: String): TagEntity? = db.withTransaction {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return@withTransaction null
+
+        tagDao.getTagByName(trimmed)?.let { return@withTransaction it }
+
+        val tagId = tagDao.insertTag(TagEntity(name = trimmed))
+        tagDao.getTagById(tagId)
+    }
 
     suspend fun setTagsForItem(itemId: Long, tagNames: List<String>) {
         tagDao.clearTagsForItem(itemId)
@@ -76,6 +88,44 @@ class RankItRepository @Inject constructor(
             val tagId = existing?.id ?: tagDao.insertTag(TagEntity(name = trimmed))
             tagDao.insertCrossRef(ItemTagCrossRef(itemId, tagId))
         }
+    }
+
+    suspend fun renameTag(tagId: Long, newName: String): TagRenameResult = db.withTransaction {
+        val sourceTag = tagDao.getTagById(tagId) ?: return@withTransaction TagRenameResult.NotFound
+        val trimmed = newName.trim()
+        if (trimmed.isBlank()) return@withTransaction TagRenameResult.InvalidName
+
+        if (sourceTag.name.equals(trimmed, ignoreCase = true)) {
+            tagDao.updateTagName(tagId, trimmed)
+            return@withTransaction TagRenameResult.Renamed
+        }
+
+        val existing = tagDao.getTagByName(trimmed)
+        if (existing != null) {
+            return@withTransaction TagRenameResult.RequiresMerge(
+                source = sourceTag,
+                target = existing
+            )
+        }
+
+        tagDao.updateTagName(tagId, trimmed)
+        TagRenameResult.Renamed
+    }
+
+    suspend fun mergeTags(sourceTagId: Long, targetTagId: Long) = db.withTransaction {
+        if (sourceTagId == targetTagId) return@withTransaction
+
+        val source = tagDao.getTagById(sourceTagId) ?: return@withTransaction
+        val target = tagDao.getTagById(targetTagId) ?: return@withTransaction
+
+        tagDao.moveCrossRefsToTag(source.id, target.id)
+        tagDao.clearItemsForTag(source.id)
+        tagDao.deleteTagById(source.id)
+    }
+
+    suspend fun deleteTag(tagId: Long) = db.withTransaction {
+        tagDao.clearItemsForTag(tagId)
+        tagDao.deleteTagById(tagId)
     }
 
     // ── Backup ─────────────────────────────────────────────────────────────
@@ -123,4 +173,14 @@ class RankItRepository @Inject constructor(
             listDao.updateList(it.copy(updatedAt = System.currentTimeMillis()))
         }
     }
+}
+
+sealed interface TagRenameResult {
+    data object Renamed : TagRenameResult
+    data object InvalidName : TagRenameResult
+    data object NotFound : TagRenameResult
+    data class RequiresMerge(
+        val source: TagEntity,
+        val target: TagEntity
+    ) : TagRenameResult
 }

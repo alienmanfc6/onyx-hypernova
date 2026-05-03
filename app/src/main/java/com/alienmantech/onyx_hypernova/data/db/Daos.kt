@@ -62,6 +62,17 @@ interface TagDao {
     @Query("SELECT * FROM tags ORDER BY name ASC")
     fun getAllTags(): Flow<List<TagEntity>>
 
+    @Query(
+        """
+        SELECT t.id, t.name, COUNT(x.itemId) AS usageCount
+        FROM tags t
+        LEFT JOIN item_tag_cross_ref x ON t.id = x.tagId
+        GROUP BY t.id, t.name
+        ORDER BY t.name COLLATE NOCASE ASC
+        """
+    )
+    fun getTagSummaries(): Flow<List<TagSummary>>
+
     @Query("SELECT t.* FROM tags t INNER JOIN item_tag_cross_ref x ON t.id = x.tagId WHERE x.itemId = :itemId ORDER BY t.name ASC")
     fun getTagsForItem(itemId: Long): Flow<List<TagEntity>>
 
@@ -71,17 +82,32 @@ interface TagDao {
     @Query("SELECT * FROM tags WHERE name = :name COLLATE NOCASE LIMIT 1")
     suspend fun getTagByName(name: String): TagEntity?
 
+    @Query("SELECT * FROM tags WHERE id = :tagId LIMIT 1")
+    suspend fun getTagById(tagId: Long): TagEntity?
+
+    @Query("UPDATE tags SET name = :name WHERE id = :tagId")
+    suspend fun updateTagName(tagId: Long, name: String)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCrossRef(crossRef: ItemTagCrossRef)
 
+    @Query("INSERT OR IGNORE INTO item_tag_cross_ref (itemId, tagId) SELECT itemId, :targetTagId FROM item_tag_cross_ref WHERE tagId = :sourceTagId")
+    suspend fun moveCrossRefsToTag(sourceTagId: Long, targetTagId: Long)
+
     @Delete
     suspend fun deleteCrossRef(crossRef: ItemTagCrossRef)
+
+    @Query("DELETE FROM item_tag_cross_ref WHERE tagId = :tagId")
+    suspend fun clearItemsForTag(tagId: Long)
 
     @Query("DELETE FROM item_tag_cross_ref WHERE itemId = :itemId")
     suspend fun clearTagsForItem(itemId: Long)
 
     @Query("SELECT t.* FROM tags t INNER JOIN item_tag_cross_ref x ON t.id = x.tagId WHERE x.itemId = :itemId")
     suspend fun getTagsForItemOnce(itemId: Long): List<TagEntity>
+
+    @Query("DELETE FROM tags WHERE id = :tagId")
+    suspend fun deleteTagById(tagId: Long)
 
     @Query("DELETE FROM tags")
     suspend fun deleteAllTags()

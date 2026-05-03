@@ -8,10 +8,12 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.alienmantech.onyx_hypernova.ui.home.HomeScreen
 import com.alienmantech.onyx_hypernova.ui.listdetail.ListDetailScreen
+import com.alienmantech.onyx_hypernova.ui.tags.ManageTagsScreen
 
 private object Routes {
     const val HOME = "home"
     const val LIST_DETAIL = "list/{listId}"
+    const val MANAGE_TAGS = "tags"
     fun listDetail(id: Long) = "list/$id"
 }
 
@@ -34,6 +36,13 @@ fun RankItNavGraph() {
             arguments = listOf(navArgument("listId") { type = NavType.LongType })
         ) {
             ListDetailScreen(
+                onBack = { navController.popBackStack() },
+                onManageTags = { navController.navigate(Routes.MANAGE_TAGS) }
+            )
+        }
+
+        composable(Routes.MANAGE_TAGS) {
+            ManageTagsScreen(
                 onBack = { navController.popBackStack() }
             )
         }

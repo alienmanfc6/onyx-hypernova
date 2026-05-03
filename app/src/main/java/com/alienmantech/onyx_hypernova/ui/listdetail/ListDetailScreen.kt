@@ -52,6 +52,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun ListDetailScreen(
     onBack: () -> Unit,
+    onManageTags: () -> Unit,
     viewModel: ListDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -69,6 +70,7 @@ fun ListDetailScreen(
     var itemToRecolor by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemToEditTags by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemWithMenu by remember { mutableStateOf<RankedItemEntity?>(null) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState()
 
     val lazyListState = rememberLazyListState()
@@ -120,11 +122,39 @@ fun ListDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showTags = !showTags }) {
-                        Icon(
-                            if (showTags) Icons.Default.Label else Icons.Default.LabelOff,
-                            contentDescription = if (showTags) "Hide tags" else "Show tags"
-                        )
+                    Box {
+                        IconButton(onClick = { showOverflowMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = { showOverflowMenu = false },
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(if (showTags) "Hide Tags" else "Show Tags") },
+                                leadingIcon = {
+                                    Icon(
+                                        if (showTags) Icons.Default.LabelOff else Icons.Default.Label,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showTags = !showTags
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Manage Tags") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, contentDescription = null)
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onManageTags()
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

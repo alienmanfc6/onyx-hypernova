@@ -39,6 +39,12 @@ data class TagEntity(
     val name: String
 )
 
+data class TagSummary(
+    val id: Long,
+    val name: String,
+    val usageCount: Int
+)
+
 @Entity(
     tableName = "item_tag_cross_ref",
     primaryKeys = ["itemId", "tagId"],
