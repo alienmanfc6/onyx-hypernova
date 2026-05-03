@@ -191,13 +191,17 @@ fun TagPickerContent(
 @Composable
 fun AddItemWithTagsDialog(
     allTags: List<String>,
+    currentItemCount: Int,
     errorMessage: String? = null,
     onNameChange: (() -> Unit)? = null,
-    onConfirm: (name: String, tags: List<String>) -> Unit,
+    onConfirm: (name: String, tags: List<String>, initialRank: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var selectedTags by remember { mutableStateOf(emptyList<String>()) }
+    val rankOptions = remember(currentItemCount) { (1..(currentItemCount + 1)).toList() }
+    var selectedRank by remember(currentItemCount) { mutableIntStateOf(currentItemCount + 1) }
+    var isRankMenuExpanded by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val inkColor = notePadInkColor()
     val dialogColor = MaterialTheme.colorScheme.surface
@@ -224,7 +228,9 @@ fun AddItemWithTagsDialog(
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { if (name.isNotBlank()) onConfirm(name, selectedTags) }
+                        onDone = {
+                            if (name.isNotBlank()) onConfirm(name, selectedTags, selectedRank)
+                        }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = fieldColor,
@@ -234,6 +240,41 @@ fun AddItemWithTagsDialog(
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
                 )
+                ExposedDropdownMenuBox(
+                    expanded = isRankMenuExpanded,
+                    onExpandedChange = { isRankMenuExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedRank.toString(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Initial rank") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isRankMenuExpanded)
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = fieldColor,
+                            unfocusedContainerColor = fieldColor
+                        ),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isRankMenuExpanded,
+                        onDismissRequest = { isRankMenuExpanded = false }
+                    ) {
+                        rankOptions.forEach { rank ->
+                            DropdownMenuItem(
+                                text = { Text(rank.toString()) },
+                                onClick = {
+                                    selectedRank = rank
+                                    isRankMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 TagPickerContent(
                     selectedTags = selectedTags,
                     allTags = allTags,
@@ -243,7 +284,7 @@ fun AddItemWithTagsDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name, selectedTags) },
+                onClick = { onConfirm(name, selectedTags, selectedRank) },
                 enabled = name.isNotBlank()
             ) { Text("Add", color = inkColor) }
         },

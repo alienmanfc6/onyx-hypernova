@@ -37,8 +37,27 @@ class RankItRepository @Inject constructor(
     fun getItemsForList(listId: Long): Flow<List<RankedItemEntity>> =
         itemDao.getItemsForList(listId)
 
-    suspend fun addItem(listId: Long, name: String, position: Int, tags: List<String> = emptyList()) {
-        val id = itemDao.insertItem(RankedItemEntity(listId = listId, name = name.trim(), position = position))
+    suspend fun addItem(
+        listId: Long,
+        name: String,
+        position: Int,
+        tags: List<String> = emptyList()
+    ) = db.withTransaction {
+        val existingItems = itemDao.getItemsForListOnce(listId)
+        val insertPosition = position.coerceIn(0, existingItems.size)
+        val shiftedItems = existingItems.mapIndexed { index, item ->
+            item.copy(position = if (index < insertPosition) index else index + 1)
+        }
+
+        itemDao.updateItems(shiftedItems)
+
+        val id = itemDao.insertItem(
+            RankedItemEntity(
+                listId = listId,
+                name = name.trim(),
+                position = insertPosition
+            )
+        )
         setTagsForItem(id, tags)
         touchList(listId)
     }
