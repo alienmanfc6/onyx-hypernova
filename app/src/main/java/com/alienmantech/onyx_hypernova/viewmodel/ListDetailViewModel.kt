@@ -16,7 +16,13 @@ data class ListDetailUiState(
     val list: RankedListEntity? = null,
     val items: List<RankedItemEntity> = emptyList(),
     val itemTags: Map<Long, List<TagEntity>> = emptyMap(),
-    val allTags: List<TagEntity> = emptyList()
+    val allTags: List<TagEntity> = emptyList(),
+    val groupedSections: List<TagGroupedItemsSection> = emptyList()
+)
+
+data class TagGroupedItemsSection(
+    val header: String,
+    val items: List<RankedItemEntity>
 )
 
 @HiltViewModel
@@ -54,21 +60,26 @@ class ListDetailViewModel @Inject constructor(
         itemTagsFlow,
         repo.getAllTags()
     ) { dbItemsArr, local, list, itemTags, allTags ->
+        val resolvedItems = local ?: dbItemsArr
         ListDetailUiState(
             list = list,
-            items = local ?: dbItemsArr,
+            items = resolvedItems,
             itemTags = itemTags,
-            allTags = allTags
+            allTags = allTags,
+            groupedSections = buildGroupedSections(
+                items = resolvedItems,
+                itemTags = itemTags
+            )
         )
     }
         .catch { /* TODO: surface DB errors to UI */ }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListDetailUiState())
 
-    fun addItem(name: String, tags: List<String> = emptyList()) {
+    fun addItem(name: String, initialRank: Int, tags: List<String> = emptyList()) {
         if (name.isBlank()) return
         viewModelScope.launch {
-            val nextPos = uiState.value.items.size
-            repo.addItem(listId, name, nextPos, tags)
+            val insertPosition = (initialRank - 1).coerceIn(0, uiState.value.items.size)
+            repo.addItem(listId, name, insertPosition, tags)
         }
     }
 
@@ -106,5 +117,41 @@ class ListDetailViewModel @Inject constructor(
             repo.reorderItems(reordered)
             _localItems.value = null
         }
+    }
+
+    private fun buildGroupedSections(
+        items: List<RankedItemEntity>,
+        itemTags: Map<Long, List<TagEntity>>
+    ): List<TagGroupedItemsSection> {
+        if (items.isEmpty()) return emptyList()
+
+        val groupedItems = linkedMapOf<String, MutableList<RankedItemEntity>>()
+
+        items.forEach { item ->
+            val tags = itemTags[item.id].orEmpty()
+            if (tags.isEmpty()) {
+                groupedItems.getOrPut(UNTAGGED_HEADER) { mutableListOf() }.add(item)
+            } else {
+                tags.forEach { tag ->
+                    groupedItems.getOrPut(tag.name) { mutableListOf() }.add(item)
+                }
+            }
+        }
+
+        return groupedItems.entries
+            .sortedWith(compareBy<Map.Entry<String, MutableList<RankedItemEntity>>>(
+                { it.key == UNTAGGED_HEADER },
+                { it.key.lowercase() }
+            ))
+            .map { (header, groupedSectionItems) ->
+                TagGroupedItemsSection(
+                    header = header,
+                    items = groupedSectionItems
+                )
+            }
+    }
+
+    private companion object {
+        const val UNTAGGED_HEADER = "Untagged"
     }
 }

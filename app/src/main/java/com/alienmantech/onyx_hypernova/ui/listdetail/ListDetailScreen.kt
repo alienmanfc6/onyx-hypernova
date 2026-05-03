@@ -43,6 +43,7 @@ import com.alienmantech.onyx_hypernova.ui.theme.notePadPageColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadSurfaceColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadToolbarColor
 import com.alienmantech.onyx_hypernova.viewmodel.ListDetailViewModel
+import com.alienmantech.onyx_hypernova.viewmodel.TagGroupedItemsSection
 import kotlinx.coroutines.delay
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -71,7 +72,11 @@ fun ListDetailScreen(
     var itemToEditTags by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemWithMenu by remember { mutableStateOf<RankedItemEntity?>(null) }
     var showOverflowMenu by remember { mutableStateOf(false) }
+    var isGroupedByTag by rememberSaveable { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState()
+    val rankByItemId = remember(state.items) {
+        state.items.mapIndexed { index, item -> item.id to (index + 1) }.toMap()
+    }
 
     val lazyListState = rememberLazyListState()
     var isDragging by remember { mutableStateOf(false) }
@@ -154,6 +159,23 @@ fun ListDetailScreen(
                                     onManageTags()
                                 }
                             )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        if (isGroupedByTag) "Show Flat List" else "Group by Tag"
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (isGroupedByTag) Icons.Default.ViewAgenda else Icons.Default.ViewStream,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    isGroupedByTag = !isGroupedByTag
+                                }
+                            )
                         }
                     }
                 },
@@ -178,6 +200,21 @@ fun ListDetailScreen(
 
         if (state.items.isEmpty()) {
             EmptyListState(modifier = Modifier.padding(padding))
+        } else if (isGroupedByTag) {
+            GroupedItemsList(
+                sections = state.groupedSections,
+                rankByItemId = rankByItemId,
+                itemTags = state.itemTags,
+                showTags = showTags,
+                pageColor = pageColor,
+                lineColor = lineColor,
+                inkColor = inkColor,
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 8.dp,
+                    bottom = padding.calculateBottomPadding() + 88.dp
+                ),
+                onItemTap = { itemWithMenu = it }
+            )
         } else {
             LazyColumn(
                 state = lazyListState,
@@ -311,14 +348,15 @@ fun ListDetailScreen(
     if (showAddDialog) {
         AddItemWithTagsDialog(
             allTags = state.allTags.map { it.name },
+            currentItemCount = state.items.size,
             errorMessage = addItemError,
             onNameChange = { addItemError = null },
-            onConfirm = { name, tags ->
+            onConfirm = { name, tags, initialRank ->
                 if (viewModel.hasItemNamed(name)) {
                     addItemError = "That item is already on this list."
                     return@AddItemWithTagsDialog
                 }
-                viewModel.addItem(name, tags)
+                viewModel.addItem(name, initialRank, tags)
                 addItemError = null
                 showAddDialog = false
             },
@@ -468,7 +506,7 @@ private fun RankedItemRow(
     rank: Int,
     tags: List<TagEntity>,
     isDragging: Boolean,
-    dragHandle: @Composable () -> Unit,
+    dragHandle: (@Composable () -> Unit)?,
     onTap: () -> Unit,
     inkColor: Color
 ) {
@@ -530,7 +568,100 @@ private fun RankedItemRow(
             }
 
             Spacer(modifier = Modifier.width(8.dp))
-            dragHandle()
+            dragHandle?.invoke()
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun GroupedItemsList(
+    sections: List<TagGroupedItemsSection>,
+    rankByItemId: Map<Long, Int>,
+    itemTags: Map<Long, List<TagEntity>>,
+    showTags: Boolean,
+    pageColor: Color,
+    lineColor: Color,
+    inkColor: Color,
+    contentPadding: PaddingValues,
+    onItemTap: (RankedItemEntity) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(pageColor),
+        contentPadding = contentPadding
+    ) {
+        sections.forEach { section ->
+            stickyHeader(key = "header-${section.header}") {
+                TagGroupHeader(
+                    title = section.header,
+                    count = section.items.size,
+                    pageColor = pageColor,
+                    lineColor = lineColor,
+                    inkColor = inkColor
+                )
+            }
+
+            itemsIndexed(
+                items = section.items,
+                key = { _, item -> "${section.header}-${item.id}" }
+            ) { _, item ->
+                Column {
+                    RankedItemRow(
+                        item = item,
+                        rank = rankByItemId[item.id] ?: 0,
+                        tags = if (showTags) itemTags[item.id].orEmpty() else emptyList(),
+                        isDragging = false,
+                        dragHandle = null,
+                        onTap = { onItemTap(item) },
+                        inkColor = inkColor
+                    )
+                    HorizontalDivider(color = lineColor, thickness = 1.dp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagGroupHeader(
+    title: String,
+    count: Int,
+    pageColor: Color,
+    lineColor: Color,
+    inkColor: Color
+) {
+    val headerBackground = notePadSurfaceColor()
+
+    Surface(
+        color = headerBackground
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(headerBackground)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = inkColor
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "($count)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = inkColor.copy(alpha = 0.7f)
+                )
+            }
+            HorizontalDivider(color = lineColor, thickness = 1.dp)
         }
     }
 }

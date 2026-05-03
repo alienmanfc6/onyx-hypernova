@@ -52,7 +52,7 @@ interface RankedItemDao {
     @Query("UPDATE ranked_items SET color = :color WHERE id = :itemId")
     suspend fun updateItemColor(itemId: Long, color: String?)
 
-    @Query("SELECT * FROM ranked_items WHERE listId = :listId")
+    @Query("SELECT * FROM ranked_items WHERE listId = :listId ORDER BY position ASC")
     suspend fun getItemsForListOnce(listId: Long): List<RankedItemEntity>
 }
 
