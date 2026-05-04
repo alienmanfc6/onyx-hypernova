@@ -26,6 +26,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,7 +50,7 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ListDetailScreen(
     onBack: () -> Unit,
@@ -499,7 +500,7 @@ private fun ColorPickerDialog(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RankedItemRow(
     item: RankedItemEntity,
@@ -518,6 +519,9 @@ private fun RankedItemRow(
         parsedItemColor != null -> parsedItemColor
         else -> notePadPageColor()
     }
+    val chipColors = SuggestionChipDefaults.suggestionChipColors(
+        containerColor = notePadSurfaceColor()
+    )
 
     Box(
         modifier = Modifier
@@ -528,7 +532,7 @@ private fun RankedItemRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -543,31 +547,40 @@ private fun RankedItemRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                if (tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        tags.forEach { tag ->
-                            SuggestionChip(
-                                onClick = {},
-                                colors = SuggestionChipDefaults.suggestionChipColors(
-                                    containerColor = notePadSurfaceColor()
-                                ),
-                                label = {
-                                    Text(
-                                        tag.name,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = inkColor
-                                    )
-                                }
-                            )
-                        }
+            }
+
+            if (tags.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(
+                    modifier = Modifier.widthIn(max = 112.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    tags.forEach { tag ->
+                        SuggestionChip(
+                            onClick = {},
+                            colors = chipColors,
+                            modifier = Modifier.defaultMinSize(minHeight = 24.dp),
+                            border = null,
+                            label = {
+                                Text(
+                                    tag.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = inkColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             dragHandle?.invoke()
         }
     }
