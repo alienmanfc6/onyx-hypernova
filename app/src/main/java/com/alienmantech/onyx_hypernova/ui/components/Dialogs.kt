@@ -15,8 +15,49 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import com.alienmantech.onyx_hypernova.ui.theme.notePadDialogColor
+import com.alienmantech.onyx_hypernova.ui.theme.notePadFieldColor
+import com.alienmantech.onyx_hypernova.ui.theme.notePadFieldFocusColor
+import com.alienmantech.onyx_hypernova.ui.theme.notePadFieldOutlineColor
+import com.alienmantech.onyx_hypernova.ui.theme.notePadFieldPlaceholderColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadInkColor
 import com.alienmantech.onyx_hypernova.viewmodel.TransferListOption
+
+@Composable
+private fun notePadDialogTextFieldColors(): TextFieldColors {
+    val inkColor = notePadInkColor()
+    val fieldColor = notePadFieldColor()
+    val focusColor = notePadFieldFocusColor()
+    val outlineColor = notePadFieldOutlineColor()
+    val placeholderColor = notePadFieldPlaceholderColor()
+
+    return OutlinedTextFieldDefaults.colors(
+        focusedTextColor = inkColor,
+        unfocusedTextColor = inkColor,
+        disabledTextColor = inkColor.copy(alpha = 0.65f),
+        errorTextColor = inkColor,
+        focusedContainerColor = fieldColor,
+        unfocusedContainerColor = fieldColor,
+        disabledContainerColor = fieldColor,
+        errorContainerColor = fieldColor,
+        focusedBorderColor = focusColor,
+        unfocusedBorderColor = outlineColor,
+        disabledBorderColor = outlineColor.copy(alpha = 0.6f),
+        focusedLabelColor = focusColor,
+        unfocusedLabelColor = placeholderColor,
+        disabledLabelColor = placeholderColor.copy(alpha = 0.7f),
+        focusedPlaceholderColor = placeholderColor,
+        unfocusedPlaceholderColor = placeholderColor,
+        disabledPlaceholderColor = placeholderColor.copy(alpha = 0.7f),
+        focusedTrailingIconColor = inkColor,
+        unfocusedTrailingIconColor = inkColor.copy(alpha = 0.85f),
+        focusedLeadingIconColor = inkColor,
+        unfocusedLeadingIconColor = inkColor.copy(alpha = 0.85f),
+        focusedSupportingTextColor = placeholderColor,
+        unfocusedSupportingTextColor = placeholderColor,
+        cursorColor = focusColor
+    )
+}
 
 /** Single-field text input dialog used for create / rename operations. */
 @Composable
@@ -33,8 +74,8 @@ fun TextInputDialog(
     var text by remember { mutableStateOf(initialValue) }
     val focusRequester = remember { FocusRequester() }
     val inkColor = notePadInkColor()
-    val dialogColor = MaterialTheme.colorScheme.surface
-    val fieldColor = MaterialTheme.colorScheme.surfaceVariant
+    val dialogColor = notePadDialogColor()
+    val textFieldColors = notePadDialogTextFieldColors()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -60,10 +101,7 @@ fun TextInputDialog(
                 supportingText = errorMessage?.let { message ->
                     { Text(message) }
                 },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = fieldColor,
-                    unfocusedContainerColor = fieldColor
-                ),
+                colors = textFieldColors,
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
@@ -96,8 +134,8 @@ fun TagPickerContent(
 ) {
     var newTagText by remember { mutableStateOf("") }
     val inkColor = notePadInkColor()
-    val fieldColor = MaterialTheme.colorScheme.surfaceVariant
-    val chipColor = MaterialTheme.colorScheme.surfaceVariant
+    val chipColor = notePadFieldColor()
+    val textFieldColors = notePadDialogTextFieldColors()
     val selectedTagsLower = selectedTags.map { it.lowercase() }.toSet()
 
     fun addTag(tag: String) {
@@ -150,10 +188,7 @@ fun TagPickerContent(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(onDone = { addTag(newTagText) }),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = fieldColor,
-                    unfocusedContainerColor = fieldColor
-                ),
+                colors = textFieldColors,
                 modifier = Modifier.weight(1f)
             )
             IconButton(
@@ -205,8 +240,8 @@ fun AddItemWithTagsDialog(
     var isRankMenuExpanded by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val inkColor = notePadInkColor()
-    val dialogColor = MaterialTheme.colorScheme.surface
-    val fieldColor = MaterialTheme.colorScheme.surfaceVariant
+    val dialogColor = notePadDialogColor()
+    val textFieldColors = notePadDialogTextFieldColors()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -233,10 +268,7 @@ fun AddItemWithTagsDialog(
                             if (name.isNotBlank()) onConfirm(name, selectedTags, selectedRank)
                         }
                     ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = fieldColor,
-                        unfocusedContainerColor = fieldColor
-                    ),
+                    colors = textFieldColors,
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
@@ -253,10 +285,7 @@ fun AddItemWithTagsDialog(
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = isRankMenuExpanded)
                         },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = fieldColor,
-                            unfocusedContainerColor = fieldColor
-                        ),
+                        colors = textFieldColors,
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth()
@@ -311,7 +340,7 @@ fun TagPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = notePadDialogColor(),
         title = { Text("Edit Tags") },
         text = {
             TagPickerContent(
@@ -355,8 +384,8 @@ fun ItemTransferDialog(
     var isListMenuExpanded by remember { mutableStateOf(false) }
     var isRankMenuExpanded by remember { mutableStateOf(false) }
     val inkColor = notePadInkColor()
-    val dialogColor = MaterialTheme.colorScheme.surface
-    val fieldColor = MaterialTheme.colorScheme.surfaceVariant
+    val dialogColor = notePadDialogColor()
+    val textFieldColors = notePadDialogTextFieldColors()
     val actionLabel = if (mode == ItemTransferDialogMode.MOVE) "Move" else "Copy"
 
     LaunchedEffect(availableLists, selectedListId) {
@@ -385,10 +414,7 @@ fun ItemTransferDialog(
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = isListMenuExpanded)
                         },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = fieldColor,
-                            unfocusedContainerColor = fieldColor
-                        ),
+                        colors = textFieldColors,
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth()
@@ -424,10 +450,7 @@ fun ItemTransferDialog(
                         },
                         supportingText = { Text("1 is top, ${selectedList.itemCount + 1} is end") },
                         isError = errorMessage != null,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = fieldColor,
-                            unfocusedContainerColor = fieldColor
-                        ),
+                        colors = textFieldColors,
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth()
@@ -479,7 +502,7 @@ fun ConfirmDeleteDialog(
     val inkColor = notePadInkColor()
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = notePadDialogColor(),
         title = { Text(title) },
         text = { Text(body) },
         confirmButton = {
@@ -501,7 +524,7 @@ fun ConfirmImportDialog(
     val inkColor = notePadInkColor()
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = notePadDialogColor(),
         title = { Text("Import Backup") },
         text = { Text("This will permanently replace all current lists, items, and tags. This cannot be undone.") },
         confirmButton = {

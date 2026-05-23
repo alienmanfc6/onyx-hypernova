@@ -39,6 +39,7 @@ import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialogMode
 import com.alienmantech.onyx_hypernova.ui.components.TagPickerDialog
 import com.alienmantech.onyx_hypernova.ui.components.TextInputDialog
 import com.alienmantech.onyx_hypernova.ui.theme.colorPalette
+import com.alienmantech.onyx_hypernova.ui.theme.displayItemColorHex
 import com.alienmantech.onyx_hypernova.ui.theme.notePadHighlightColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadInkColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadLineColor
@@ -523,13 +524,14 @@ private fun ColorPickerDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         row.forEach { colorHex ->
                             val isSelected = colorHex == currentColor
+                            val displayColorHex = displayItemColorHex(colorHex)
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        color = if (colorHex != null)
-                                            runCatching { Color(AndroidColor.parseColor(colorHex)) }
+                                        color = if (displayColorHex != null)
+                                            runCatching { Color(AndroidColor.parseColor(displayColorHex)) }
                                                 .getOrDefault(Color.Gray)
                                         else
                                             Color.Transparent
@@ -578,8 +580,11 @@ private fun RankedItemRow(
     onTap: () -> Unit,
     inkColor: Color
 ) {
-    val parsedItemColor = remember(item.color) {
-        item.color?.let { hex -> runCatching { Color(AndroidColor.parseColor(hex)) }.getOrDefault(Color.Gray) }
+    val displayColorHex = displayItemColorHex(item.color)
+    val parsedItemColor = remember(displayColorHex) {
+        displayColorHex?.let { hex ->
+            runCatching { Color(AndroidColor.parseColor(hex)) }.getOrDefault(Color.Gray)
+        }
     }
     val bgColor = when {
         isDragging -> notePadHighlightColor()

@@ -21,33 +21,56 @@ private val NotePadSurfaceDark = Color(0xFF3D3227)
 
 @Immutable
 data class NotepadPalette(
+    val isDark: Boolean,
     val page: Color,
     val toolbar: Color,
     val line: Color,
     val highlight: Color,
     val ink: Color,
-    val surface: Color
+    val surface: Color,
+    val dialogSurface: Color,
+    val fieldSurface: Color,
+    val fieldFocus: Color,
+    val fieldOutline: Color,
+    val fieldPlaceholder: Color
 )
 
 val LightNotepadPalette = NotepadPalette(
+    isDark = false,
     page = NotePadYellowLight,
     toolbar = NotePadToolbarLight,
     line = NotePadLineLight,
     highlight = NotePadDragHighlightLight,
     ink = NotePadInkLight,
-    surface = NotePadSurfaceLight
+    surface = NotePadSurfaceLight,
+    dialogSurface = Color(0xFFFFF3C4),
+    fieldSurface = Color(0xFFF8EDBC),
+    fieldFocus = Color(0xFF9A6414),
+    fieldOutline = Color(0xFFB7A27B),
+    fieldPlaceholder = Color(0xFF8B6B46)
 )
 
 val DarkNotepadPalette = NotepadPalette(
+    isDark = true,
     page = NotePadYellowDark,
     toolbar = NotePadToolbarDark,
     line = NotePadLineDark,
     highlight = NotePadDragHighlightDark,
     ink = NotePadInkDark,
-    surface = NotePadSurfaceDark
+    surface = NotePadSurfaceDark,
+    dialogSurface = Color(0xFF46392D),
+    fieldSurface = Color(0xFF544536),
+    fieldFocus = Color(0xFFF4DE8A),
+    fieldOutline = Color(0xFF9B876C),
+    fieldPlaceholder = Color(0xFFC7B69F)
 )
 
 val LocalNotepadPalette = staticCompositionLocalOf { LightNotepadPalette }
+
+private val darkModeItemColorOverrides = mapOf(
+    "#FFFF00" to "#8A6A00",
+    "#00FFFF" to "#0B6E69"
+)
 
 val NotePadYellow = NotePadYellowLight
 val NotePadToolbar = NotePadToolbarLight
@@ -72,6 +95,33 @@ fun notePadInkColor(): Color = LocalNotepadPalette.current.ink
 
 @Composable
 fun notePadSurfaceColor(): Color = LocalNotepadPalette.current.surface
+
+@Composable
+fun notePadDialogColor(): Color = LocalNotepadPalette.current.dialogSurface
+
+@Composable
+fun notePadFieldColor(): Color = LocalNotepadPalette.current.fieldSurface
+
+@Composable
+fun notePadFieldFocusColor(): Color = LocalNotepadPalette.current.fieldFocus
+
+@Composable
+fun notePadFieldOutlineColor(): Color = LocalNotepadPalette.current.fieldOutline
+
+@Composable
+fun notePadFieldPlaceholderColor(): Color = LocalNotepadPalette.current.fieldPlaceholder
+
+@Composable
+fun displayItemColorHex(colorHex: String?): String? {
+    if (colorHex == null) return null
+
+    val normalized = colorHex.uppercase()
+    return if (LocalNotepadPalette.current.isDark) {
+        darkModeItemColorOverrides[normalized] ?: normalized
+    } else {
+        normalized
+    }
+}
 
 val colorPalette = listOf(
     null,
