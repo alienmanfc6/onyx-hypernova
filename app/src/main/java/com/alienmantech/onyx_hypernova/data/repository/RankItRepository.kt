@@ -16,6 +16,18 @@ class RankItRepository @Inject constructor(
     private val itemDao: RankedItemDao,
     private val tagDao: TagDao
 ) {
+    enum class ItemTransferMode {
+        COPY,
+        MOVE
+    }
+
+    sealed interface ItemTransferResult {
+        data object Success : ItemTransferResult
+        data object ItemNotFound : ItemTransferResult
+        data object InvalidDestination : ItemTransferResult
+        data object DuplicateName : ItemTransferResult
+    }
+
     // ── Lists ──────────────────────────────────────────────────────────────
 
     fun getAllLists(): Flow<List<RankedListEntity>> = listDao.getAllLists()
@@ -79,6 +91,28 @@ class RankItRepository @Inject constructor(
         itemDao.updateItems(updated)
         if (items.isNotEmpty()) touchList(items.first().listId)
     }
+
+    suspend fun copyItemToList(
+        itemId: Long,
+        destinationListId: Long,
+        destinationRank: Int
+    ): ItemTransferResult = transferItem(
+        itemId = itemId,
+        destinationListId = destinationListId,
+        destinationRank = destinationRank,
+        mode = ItemTransferMode.COPY
+    )
+
+    suspend fun moveItemToList(
+        itemId: Long,
+        destinationListId: Long,
+        destinationRank: Int
+    ): ItemTransferResult = transferItem(
+        itemId = itemId,
+        destinationListId = destinationListId,
+        destinationRank = destinationRank,
+        mode = ItemTransferMode.MOVE
+    )
 
     // ── Tags ───────────────────────────────────────────────────────────────
 
@@ -186,6 +220,49 @@ class RankItRepository @Inject constructor(
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
+
+    private suspend fun transferItem(
+        itemId: Long,
+        destinationListId: Long,
+        destinationRank: Int,
+        mode: ItemTransferMode
+    ): ItemTransferResult = db.withTransaction {
+        val sourceItem = itemDao.getItemById(itemId) ?: return@withTransaction ItemTransferResult.ItemNotFound
+        if (sourceItem.listId == destinationListId) {
+            return@withTransaction ItemTransferResult.InvalidDestination
+        }
+
+        val destinationList = listDao.getListById(destinationListId)
+            ?: return@withTransaction ItemTransferResult.InvalidDestination
+        if (itemDao.hasItemNamed(destinationList.id, sourceItem.name.trim())) {
+            return@withTransaction ItemTransferResult.DuplicateName
+        }
+
+        val destinationItems = itemDao.getItemsForListOnce(destinationList.id)
+        val insertPosition = (destinationRank - 1).coerceIn(0, destinationItems.size)
+        val shiftedItems = destinationItems.mapIndexed { index, item ->
+            item.copy(position = if (index < insertPosition) index else index + 1)
+        }
+        itemDao.updateItems(shiftedItems)
+
+        val newItemId = itemDao.insertItem(
+            sourceItem.copy(
+                id = 0,
+                listId = destinationList.id,
+                position = insertPosition
+            )
+        )
+        val tags = tagDao.getTagsForItemOnce(sourceItem.id).map { it.name }
+        setTagsForItem(newItemId, tags)
+
+        if (mode == ItemTransferMode.MOVE) {
+            itemDao.deleteItem(sourceItem)
+            touchList(sourceItem.listId)
+        }
+
+        touchList(destinationList.id)
+        ItemTransferResult.Success
+    }
 
     private suspend fun touchList(listId: Long) {
         listDao.getListById(listId)?.let {

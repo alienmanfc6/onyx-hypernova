@@ -16,6 +16,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.alienmantech.onyx_hypernova.ui.theme.notePadInkColor
+import com.alienmantech.onyx_hypernova.viewmodel.TransferListOption
 
 /** Single-field text input dialog used for create / rename operations. */
 @Composable
@@ -321,6 +322,145 @@ fun TagPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(selectedTags) }) { Text("Done", color = inkColor) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = inkColor) }
+        }
+    )
+}
+
+enum class ItemTransferDialogMode {
+    COPY,
+    MOVE
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ItemTransferDialog(
+    itemName: String,
+    mode: ItemTransferDialogMode,
+    availableLists: List<TransferListOption>,
+    errorMessage: String? = null,
+    onSelectionChange: () -> Unit = {},
+    onConfirm: (destinationListId: Long, destinationRank: Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val initialDestination = availableLists.firstOrNull() ?: return
+    var selectedListId by remember(availableLists) { mutableLongStateOf(initialDestination.list.id) }
+    val selectedList = availableLists.firstOrNull { it.list.id == selectedListId } ?: initialDestination
+    val rankOptions = remember(selectedList.itemCount) { (1..(selectedList.itemCount + 1)).toList() }
+    var selectedRank by remember(selectedList.list.id, selectedList.itemCount) {
+        mutableIntStateOf(selectedList.itemCount + 1)
+    }
+    var isListMenuExpanded by remember { mutableStateOf(false) }
+    var isRankMenuExpanded by remember { mutableStateOf(false) }
+    val inkColor = notePadInkColor()
+    val dialogColor = MaterialTheme.colorScheme.surface
+    val fieldColor = MaterialTheme.colorScheme.surfaceVariant
+    val actionLabel = if (mode == ItemTransferDialogMode.MOVE) "Move" else "Copy"
+
+    LaunchedEffect(availableLists, selectedListId) {
+        if (availableLists.none { it.list.id == selectedListId }) {
+            selectedListId = initialDestination.list.id
+            selectedRank = initialDestination.itemCount + 1
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = dialogColor,
+        title = { Text("$actionLabel Item") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Choose where to $actionLabel \"${itemName.trim()}\".")
+                ExposedDropdownMenuBox(
+                    expanded = isListMenuExpanded,
+                    onExpandedChange = { isListMenuExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedList.list.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Destination list") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isListMenuExpanded)
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = fieldColor,
+                            unfocusedContainerColor = fieldColor
+                        ),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isListMenuExpanded,
+                        onDismissRequest = { isListMenuExpanded = false }
+                    ) {
+                        availableLists.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.list.name) },
+                                onClick = {
+                                    selectedListId = option.list.id
+                                    selectedRank = option.itemCount + 1
+                                    isListMenuExpanded = false
+                                    onSelectionChange()
+                                }
+                            )
+                        }
+                    }
+                }
+                ExposedDropdownMenuBox(
+                    expanded = isRankMenuExpanded,
+                    onExpandedChange = { isRankMenuExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedRank.toString(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Destination rank") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isRankMenuExpanded)
+                        },
+                        supportingText = { Text("1 is top, ${selectedList.itemCount + 1} is end") },
+                        isError = errorMessage != null,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = fieldColor,
+                            unfocusedContainerColor = fieldColor
+                        ),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isRankMenuExpanded,
+                        onDismissRequest = { isRankMenuExpanded = false }
+                    ) {
+                        rankOptions.forEach { rank ->
+                            DropdownMenuItem(
+                                text = { Text(rank.toString()) },
+                                onClick = {
+                                    selectedRank = rank
+                                    isRankMenuExpanded = false
+                                    onSelectionChange()
+                                }
+                            )
+                        }
+                    }
+                }
+                errorMessage?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedList.list.id, selectedRank) }) {
+                Text(actionLabel, color = inkColor)
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel", color = inkColor) }

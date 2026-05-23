@@ -34,6 +34,8 @@ import com.alienmantech.onyx_hypernova.data.db.RankedItemEntity
 import com.alienmantech.onyx_hypernova.data.db.TagEntity
 import com.alienmantech.onyx_hypernova.ui.components.AddItemWithTagsDialog
 import com.alienmantech.onyx_hypernova.ui.components.ConfirmDeleteDialog
+import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialog
+import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialogMode
 import com.alienmantech.onyx_hypernova.ui.components.TagPickerDialog
 import com.alienmantech.onyx_hypernova.ui.components.TextInputDialog
 import com.alienmantech.onyx_hypernova.ui.theme.colorPalette
@@ -71,6 +73,8 @@ fun ListDetailScreen(
     var itemToDelete by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemToRecolor by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemToEditTags by remember { mutableStateOf<RankedItemEntity?>(null) }
+    var itemToMove by remember { mutableStateOf<RankedItemEntity?>(null) }
+    var itemToCopy by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemWithMenu by remember { mutableStateOf<RankedItemEntity?>(null) }
     var showOverflowMenu by remember { mutableStateOf(false) }
     var isGroupedByTag by rememberSaveable { mutableStateOf(false) }
@@ -108,6 +112,14 @@ fun ListDetailScreen(
             }
 
             delay(16)
+        }
+    }
+
+    LaunchedEffect(state.transferSuccessToken) {
+        if (state.transferSuccessToken > 0) {
+            itemToMove = null
+            itemToCopy = null
+            viewModel.clearTransferError()
         }
     }
 
@@ -324,6 +336,26 @@ fun ListDetailScreen(
                     itemToEditTags = item
                 }
             )
+            if (state.availableLists.isNotEmpty()) {
+                ListItem(
+                    headlineContent = { Text("Move to Another List") },
+                    leadingContent = { Icon(Icons.Default.SwapHoriz, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        viewModel.clearTransferError()
+                        itemWithMenu = null
+                        itemToMove = item
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Copy to Another List") },
+                    leadingContent = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        viewModel.clearTransferError()
+                        itemWithMenu = null
+                        itemToCopy = item
+                    }
+                )
+            }
             ListItem(
                 headlineContent = {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
@@ -416,6 +448,40 @@ fun ListDetailScreen(
             onDismiss = { itemToEditTags = null }
         )
     }
+
+    itemToMove?.let { item ->
+        ItemTransferDialog(
+            itemName = item.name,
+            mode = ItemTransferDialogMode.MOVE,
+            availableLists = state.availableLists,
+            errorMessage = state.transferErrorMessage,
+            onSelectionChange = viewModel::clearTransferError,
+            onConfirm = { destinationListId, destinationRank ->
+                viewModel.moveItemToList(item, destinationListId, destinationRank)
+            },
+            onDismiss = {
+                viewModel.clearTransferError()
+                itemToMove = null
+            }
+        )
+    }
+
+    itemToCopy?.let { item ->
+        ItemTransferDialog(
+            itemName = item.name,
+            mode = ItemTransferDialogMode.COPY,
+            availableLists = state.availableLists,
+            errorMessage = state.transferErrorMessage,
+            onSelectionChange = viewModel::clearTransferError,
+            onConfirm = { destinationListId, destinationRank ->
+                viewModel.copyItemToList(item, destinationListId, destinationRank)
+            },
+            onDismiss = {
+                viewModel.clearTransferError()
+                itemToCopy = null
+            }
+        )
+    }
 }
 
 private fun autoScrollDelta(
@@ -505,6 +571,7 @@ private fun ColorPickerDialog(
 private fun RankedItemRow(
     item: RankedItemEntity,
     rank: Int,
+    secondaryRank: Int? = null,
     tags: List<TagEntity>,
     isDragging: Boolean,
     dragHandle: (@Composable () -> Unit)?,
@@ -535,12 +602,24 @@ private fun RankedItemRow(
                 .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "#$rank",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = inkColor
-            )
+            Column(
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "#$rank",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = inkColor
+                )
+                secondaryRank?.let { overallRank ->
+                    Text(
+                        text = "(#$overallRank)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = inkColor.copy(alpha = 0.7f)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -619,11 +698,12 @@ private fun GroupedItemsList(
             itemsIndexed(
                 items = section.items,
                 key = { _, item -> "${section.header}-${item.id}" }
-            ) { _, item ->
+            ) { index, item ->
                 Column {
                     RankedItemRow(
                         item = item,
-                        rank = rankByItemId[item.id] ?: 0,
+                        rank = index + 1,
+                        secondaryRank = rankByItemId[item.id],
                         tags = if (showTags) itemTags[item.id].orEmpty() else emptyList(),
                         isDragging = false,
                         dragHandle = null,

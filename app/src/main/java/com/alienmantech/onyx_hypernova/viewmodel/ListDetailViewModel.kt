@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.alienmantech.onyx_hypernova.data.db.RankedItemEntity
 import com.alienmantech.onyx_hypernova.data.db.RankedListEntity
 import com.alienmantech.onyx_hypernova.data.db.TagEntity
+import com.alienmantech.onyx_hypernova.data.repository.RankItRepository.ItemTransferResult
 import com.alienmantech.onyx_hypernova.data.repository.RankItRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -17,12 +18,20 @@ data class ListDetailUiState(
     val items: List<RankedItemEntity> = emptyList(),
     val itemTags: Map<Long, List<TagEntity>> = emptyMap(),
     val allTags: List<TagEntity> = emptyList(),
-    val groupedSections: List<TagGroupedItemsSection> = emptyList()
+    val groupedSections: List<TagGroupedItemsSection> = emptyList(),
+    val availableLists: List<TransferListOption> = emptyList(),
+    val transferErrorMessage: String? = null,
+    val transferSuccessToken: Int = 0
 )
 
 data class TagGroupedItemsSection(
     val header: String,
     val items: List<RankedItemEntity>
+)
+
+data class TransferListOption(
+    val list: RankedListEntity,
+    val itemCount: Int
 )
 
 @HiltViewModel
@@ -37,9 +46,22 @@ class ListDetailViewModel @Inject constructor(
 
     // Mutable local copy for optimistic drag-and-drop updates
     private val _localItems = MutableStateFlow<List<RankedItemEntity>?>(null)
+    private val _transferErrorMessage = MutableStateFlow<String?>(null)
+    private val _transferSuccessToken = MutableStateFlow(0)
     private val listFlow = flow { emit(repo.getListById(listId)) }
 
     private val dbItems: Flow<List<RankedItemEntity>> = repo.getItemsForList(listId)
+    private val availableListsFlow: Flow<List<TransferListOption>> = repo.getAllLists()
+        .map { lists -> lists.filter { it.id != listId } }
+        .flatMapLatest { lists ->
+            if (lists.isEmpty()) {
+                flowOf(emptyList())
+            } else {
+                combine(lists.map { list ->
+                    repo.getItemCount(list.id).map { count -> TransferListOption(list, count) }
+                }) { options -> options.toList() }
+            }
+        }
 
     // For each item, collect its tags and merge into a map
     private val itemTagsFlow: Flow<Map<Long, List<TagEntity>>> = dbItems
@@ -53,7 +75,7 @@ class ListDetailViewModel @Inject constructor(
             }
         }
 
-    val uiState: StateFlow<ListDetailUiState> = combine(
+    private val baseUiStateFlow: Flow<ListDetailUiState> = combine(
         dbItems,
         _localItems,
         listFlow,
@@ -70,6 +92,19 @@ class ListDetailViewModel @Inject constructor(
                 items = resolvedItems,
                 itemTags = itemTags
             )
+        )
+    }
+
+    val uiState: StateFlow<ListDetailUiState> = combine(
+        baseUiStateFlow,
+        availableListsFlow,
+        _transferErrorMessage,
+        _transferSuccessToken
+    ) { baseState, availableLists, transferErrorMessage, transferSuccessToken ->
+        baseState.copy(
+            availableLists = availableLists,
+            transferErrorMessage = transferErrorMessage,
+            transferSuccessToken = transferSuccessToken
         )
     }
         .catch { /* TODO: surface DB errors to UI */ }
@@ -104,6 +139,40 @@ class ListDetailViewModel @Inject constructor(
 
     fun updateItemTags(item: RankedItemEntity, tags: List<String>) {
         viewModelScope.launch { repo.setTagsForItem(item.id, tags) }
+    }
+
+    fun copyItemToList(item: RankedItemEntity, destinationListId: Long, destinationRank: Int) {
+        viewModelScope.launch {
+            _transferErrorMessage.value = null
+            val result = repo.copyItemToList(
+                itemId = item.id,
+                destinationListId = destinationListId,
+                destinationRank = destinationRank
+            )
+            when (result) {
+                ItemTransferResult.Success -> _transferSuccessToken.value += 1
+                else -> _transferErrorMessage.value = result.toErrorMessage()
+            }
+        }
+    }
+
+    fun moveItemToList(item: RankedItemEntity, destinationListId: Long, destinationRank: Int) {
+        viewModelScope.launch {
+            _transferErrorMessage.value = null
+            val result = repo.moveItemToList(
+                itemId = item.id,
+                destinationListId = destinationListId,
+                destinationRank = destinationRank
+            )
+            when (result) {
+                ItemTransferResult.Success -> _transferSuccessToken.value += 1
+                else -> _transferErrorMessage.value = result.toErrorMessage()
+            }
+        }
+    }
+
+    fun clearTransferError() {
+        _transferErrorMessage.value = null
     }
 
     /** Called on every drag move — updates local UI immediately. */
@@ -153,5 +222,12 @@ class ListDetailViewModel @Inject constructor(
 
     private companion object {
         const val UNTAGGED_HEADER = "Untagged"
+    }
+
+    private fun ItemTransferResult.toErrorMessage(): String? = when (this) {
+        ItemTransferResult.Success -> null
+        ItemTransferResult.DuplicateName -> "That item is already on the selected list."
+        ItemTransferResult.InvalidDestination -> "Choose a different destination list."
+        ItemTransferResult.ItemNotFound -> "That item could not be found."
     }
 }

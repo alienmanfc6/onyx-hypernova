@@ -34,6 +34,9 @@ interface RankedItemDao {
     @Query("SELECT * FROM ranked_items WHERE listId = :listId ORDER BY position ASC")
     fun getItemsForList(listId: Long): Flow<List<RankedItemEntity>>
 
+    @Query("SELECT * FROM ranked_items WHERE id = :itemId LIMIT 1")
+    suspend fun getItemById(itemId: Long): RankedItemEntity?
+
     @Insert
     suspend fun insertItem(item: RankedItemEntity): Long
 
@@ -54,6 +57,19 @@ interface RankedItemDao {
 
     @Query("SELECT * FROM ranked_items WHERE listId = :listId ORDER BY position ASC")
     suspend fun getItemsForListOnce(listId: Long): List<RankedItemEntity>
+
+    @Query(
+        """
+        SELECT EXISTS(
+            SELECT 1
+            FROM ranked_items
+            WHERE listId = :listId
+              AND name = :name COLLATE NOCASE
+            LIMIT 1
+        )
+        """
+    )
+    suspend fun hasItemNamed(listId: Long, name: String): Boolean
 }
 
 @Dao
