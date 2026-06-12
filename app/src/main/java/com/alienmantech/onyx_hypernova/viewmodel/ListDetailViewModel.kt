@@ -16,6 +16,9 @@ import javax.inject.Inject
 data class ListDetailUiState(
     val list: RankedListEntity? = null,
     val items: List<RankedItemEntity> = emptyList(),
+    val searchQuery: String = "",
+    val filteredItems: List<RankedItemEntity> = emptyList(),
+    val isSearchActive: Boolean = false,
     val itemTags: Map<Long, List<TagEntity>> = emptyMap(),
     val allTags: List<TagEntity> = emptyList(),
     val groupedSections: List<TagGroupedItemsSection> = emptyList(),
@@ -46,6 +49,7 @@ class ListDetailViewModel @Inject constructor(
 
     // Mutable local copy for optimistic drag-and-drop updates
     private val _localItems = MutableStateFlow<List<RankedItemEntity>?>(null)
+    private val _searchQuery = MutableStateFlow("")
     private val _transferErrorMessage = MutableStateFlow<String?>(null)
     private val _transferSuccessToken = MutableStateFlow(0)
     private val listFlow = flow { emit(repo.getListById(listId)) }
@@ -93,6 +97,24 @@ class ListDetailViewModel @Inject constructor(
                 itemTags = itemTags
             )
         )
+    }.combine(_searchQuery) { baseState, searchQuery ->
+        val normalizedQuery = searchQuery.trim()
+        val isSearchActive = normalizedQuery.isNotEmpty()
+        val filteredItems = if (!isSearchActive) {
+            baseState.items
+        } else {
+            baseState.items.filter { item ->
+                item.name.contains(normalizedQuery, ignoreCase = true) ||
+                    baseState.itemTags[item.id].orEmpty().any { tag ->
+                        tag.name.contains(normalizedQuery, ignoreCase = true)
+                    }
+            }
+        }
+        baseState.copy(
+            searchQuery = searchQuery,
+            filteredItems = filteredItems,
+            isSearchActive = isSearchActive
+        )
     }
 
     val uiState: StateFlow<ListDetailUiState> = combine(
@@ -139,6 +161,10 @@ class ListDetailViewModel @Inject constructor(
 
     fun updateItemTags(item: RankedItemEntity, tags: List<String>) {
         viewModelScope.launch { repo.setTagsForItem(item.id, tags) }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
     fun copyItemToList(item: RankedItemEntity, destinationListId: Long, destinationRank: Int) {

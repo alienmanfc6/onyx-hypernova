@@ -24,7 +24,7 @@ import com.alienmantech.onyx_hypernova.ui.theme.notePadInkColor
 import com.alienmantech.onyx_hypernova.viewmodel.TransferListOption
 
 @Composable
-private fun notePadDialogTextFieldColors(): TextFieldColors {
+fun notePadDialogTextFieldColors(): TextFieldColors {
     val inkColor = notePadInkColor()
     val fieldColor = notePadFieldColor()
     val focusColor = notePadFieldFocusColor()

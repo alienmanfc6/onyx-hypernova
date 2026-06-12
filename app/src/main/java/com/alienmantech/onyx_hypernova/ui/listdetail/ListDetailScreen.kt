@@ -28,6 +28,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.alienmantech.onyx_hypernova.data.db.RankedItemEntity
@@ -38,6 +40,7 @@ import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialog
 import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialogMode
 import com.alienmantech.onyx_hypernova.ui.components.TagPickerDialog
 import com.alienmantech.onyx_hypernova.ui.components.TextInputDialog
+import com.alienmantech.onyx_hypernova.ui.components.notePadDialogTextFieldColors
 import com.alienmantech.onyx_hypernova.ui.theme.colorPalette
 import com.alienmantech.onyx_hypernova.ui.theme.displayItemColorHex
 import com.alienmantech.onyx_hypernova.ui.theme.notePadHighlightColor
@@ -66,6 +69,7 @@ fun ListDetailScreen(
     val inkColor = notePadInkColor()
     val pageColor = notePadPageColor()
     val lineColor = notePadLineColor()
+    val searchFieldColors = notePadDialogTextFieldColors()
 
     var showTags by rememberSaveable { mutableStateOf(true) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -83,6 +87,7 @@ fun ListDetailScreen(
     val rankByItemId = remember(state.items) {
         state.items.mapIndexed { index, item -> item.id to (index + 1) }.toMap()
     }
+    val visibleItems = if (state.isSearchActive) state.filteredItems else state.items
 
     val lazyListState = rememberLazyListState()
     var isDragging by remember { mutableStateOf(false) }
@@ -211,79 +216,129 @@ fun ListDetailScreen(
             }
         }
     ) { padding ->
-
-        if (state.items.isEmpty()) {
-            EmptyListState(modifier = Modifier.padding(padding))
-        } else if (isGroupedByTag) {
-            GroupedItemsList(
-                sections = state.groupedSections,
-                rankByItemId = rankByItemId,
-                itemTags = state.itemTags,
-                showTags = showTags,
-                pageColor = pageColor,
-                lineColor = lineColor,
-                inkColor = inkColor,
-                contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding() + 8.dp,
-                    bottom = padding.calculateBottomPadding() + 88.dp
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(pageColor)
+                .padding(top = padding.calculateTopPadding())
+        ) {
+            OutlinedTextField(
+                value = state.searchQuery,
+                onValueChange = viewModel::updateSearchQuery,
+                placeholder = { Text("Search items") },
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Search
                 ),
-                onItemTap = { itemWithMenu = it }
-            )
-        } else {
-            LazyColumn(
-                state = lazyListState,
+                colors = searchFieldColors,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .onSizeChanged { listViewportHeightPx = it.height }
-                    .pointerInput(isDragging) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent(PointerEventPass.Initial)
-                                if (!isDragging) continue
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            )
 
-                                val activePointer = event.changes.firstOrNull { it.pressed }
-                                if (activePointer != null) {
-                                    dragPointerY = activePointer.position.y
+            when {
+                state.items.isEmpty() -> {
+                    EmptyListState(
+                        modifier = Modifier.padding(bottom = padding.calculateBottomPadding())
+                    )
+                }
+
+                state.isSearchActive && visibleItems.isEmpty() -> {
+                    SearchEmptyState(
+                        modifier = Modifier.padding(bottom = padding.calculateBottomPadding())
+                    )
+                }
+
+                !state.isSearchActive && isGroupedByTag -> {
+                    GroupedItemsList(
+                        sections = state.groupedSections,
+                        rankByItemId = rankByItemId,
+                        itemTags = state.itemTags,
+                        showTags = showTags,
+                        pageColor = pageColor,
+                        lineColor = lineColor,
+                        inkColor = inkColor,
+                        contentPadding = PaddingValues(
+                            top = 8.dp,
+                            bottom = padding.calculateBottomPadding() + 88.dp
+                        ),
+                        onItemTap = { itemWithMenu = it }
+                    )
+                }
+
+                else -> {
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .onSizeChanged { listViewportHeightPx = it.height }
+                            .pointerInput(isDragging, state.isSearchActive) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        if (!isDragging || state.isSearchActive) continue
+
+                                        val activePointer = event.changes.firstOrNull { it.pressed }
+                                        if (activePointer != null) {
+                                            dragPointerY = activePointer.position.y
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                    .background(pageColor),
-                contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding() + 8.dp,
-                    bottom = padding.calculateBottomPadding() + 88.dp
-                )
-            ) {
-                itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-                    ReorderableItem(reorderState, key = item.id) { isItemDragging ->
-                        Column {
-                            RankedItemRow(
-                                item = item,
-                                rank = index + 1,
-                                tags = if (showTags) state.itemTags[item.id].orEmpty() else emptyList(),
-                                isDragging = isItemDragging,
-                                dragHandle = {
-                                    Icon(
-                                        Icons.Default.DragHandle,
-                                        contentDescription = "Drag to reorder",
-                                        tint = inkColor.copy(alpha = 0.5f),
-                                        modifier = Modifier.draggableHandle(
-                                            onDragStarted = {
-                                                isDragging = true
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            },
-                                            onDragStopped = {
-                                                isDragging = false
-                                                dragPointerY = Float.NaN
-                                                viewModel.onDragEnd(state.items)
-                                            }
-                                        )
+                            .background(pageColor),
+                        contentPadding = PaddingValues(
+                            top = 8.dp,
+                            bottom = padding.calculateBottomPadding() + 88.dp
+                        )
+                    ) {
+                        itemsIndexed(visibleItems, key = { _, item -> item.id }) { index, item ->
+                            if (state.isSearchActive) {
+                                Column {
+                                    RankedItemRow(
+                                        item = item,
+                                        rank = rankByItemId[item.id] ?: (index + 1),
+                                        tags = if (showTags) state.itemTags[item.id].orEmpty() else emptyList(),
+                                        isDragging = false,
+                                        dragHandle = null,
+                                        onTap = { itemWithMenu = item },
+                                        inkColor = inkColor
                                     )
-                                },
-                                onTap = { itemWithMenu = item },
-                                inkColor = inkColor
-                            )
-                            HorizontalDivider(color = lineColor, thickness = 1.dp)
+                                    HorizontalDivider(color = lineColor, thickness = 1.dp)
+                                }
+                            } else {
+                                ReorderableItem(reorderState, key = item.id) { isItemDragging ->
+                                    Column {
+                                        RankedItemRow(
+                                            item = item,
+                                            rank = index + 1,
+                                            tags = if (showTags) state.itemTags[item.id].orEmpty() else emptyList(),
+                                            isDragging = isItemDragging,
+                                            dragHandle = {
+                                                Icon(
+                                                    Icons.Default.DragHandle,
+                                                    contentDescription = "Drag to reorder",
+                                                    tint = inkColor.copy(alpha = 0.5f),
+                                                    modifier = Modifier.draggableHandle(
+                                                        onDragStarted = {
+                                                            isDragging = true
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        },
+                                                        onDragStopped = {
+                                                            isDragging = false
+                                                            dragPointerY = Float.NaN
+                                                            viewModel.onDragEnd(state.items)
+                                                        }
+                                                    )
+                                                )
+                                            },
+                                            onTap = { itemWithMenu = item },
+                                            inkColor = inkColor
+                                        )
+                                        HorizontalDivider(color = lineColor, thickness = 1.dp)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -482,6 +537,37 @@ fun ListDetailScreen(
                 itemToCopy = null
             }
         )
+    }
+}
+
+@Composable
+private fun SearchEmptyState(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(notePadPageColor()),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.SearchOff,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "No matching items",
+                style = MaterialTheme.typography.titleMedium,
+                color = notePadInkColor()
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Try a different name or tag",
+                style = MaterialTheme.typography.bodyMedium,
+                color = notePadInkColor().copy(alpha = 0.7f)
+            )
+        }
     }
 }
 
