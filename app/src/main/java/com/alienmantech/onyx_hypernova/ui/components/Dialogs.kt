@@ -1,5 +1,7 @@
 package com.alienmantech.onyx_hypernova.ui.components
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -133,6 +135,7 @@ fun TagPickerContent(
     onTagsChanged: (List<String>) -> Unit
 ) {
     var newTagText by remember { mutableStateOf("") }
+    val suggestionsScrollState = rememberScrollState()
     val inkColor = notePadInkColor()
     val chipColor = notePadFieldColor()
     val textFieldColors = notePadDialogTextFieldColors()
@@ -202,20 +205,28 @@ fun TagPickerContent(
         // Suggestions: previously used tags not already selected
         val suggestions = allTags.filter { it.lowercase() !in selectedTagsLower }
         if (suggestions.isNotEmpty()) {
-            Text(
-                "Suggestions",
-                style = MaterialTheme.typography.labelSmall,
-                color = inkColor.copy(alpha = 0.75f)
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                suggestions.forEach { tag ->
-                    SuggestionChip(
-                        onClick = { onTagsChanged(selectedTags + tag) },
-                        colors = SuggestionChipDefaults.suggestionChipColors(
-                            containerColor = chipColor
-                        ),
-                        label = { Text(tag, color = inkColor) }
-                    )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 180.dp)
+                    .verticalScroll(suggestionsScrollState),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "Suggestions",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = inkColor.copy(alpha = 0.75f)
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    suggestions.forEach { tag ->
+                        SuggestionChip(
+                            onClick = { onTagsChanged(selectedTags + tag) },
+                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                containerColor = chipColor
+                            ),
+                            label = { Text(tag, color = inkColor) }
+                        )
+                    }
                 }
             }
         }
