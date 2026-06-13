@@ -133,12 +133,16 @@ class RankItRepository @Inject constructor(
     }
 
     suspend fun setTagsForItem(itemId: Long, tagNames: List<String>) {
+        val lastUsedAt = System.currentTimeMillis()
         tagDao.clearTagsForItem(itemId)
         tagNames.forEach { name ->
             val trimmed = name.trim()
             if (trimmed.isBlank()) return@forEach
             val existing = tagDao.getTagByName(trimmed)
-            val tagId = existing?.id ?: tagDao.insertTag(TagEntity(name = trimmed))
+            val tagId = existing?.id ?: tagDao.insertTag(TagEntity(name = trimmed, lastUsedAt = lastUsedAt))
+            if (existing != null) {
+                tagDao.updateTagLastUsedAt(existing.id, lastUsedAt)
+            }
             tagDao.insertCrossRef(ItemTagCrossRef(itemId, tagId))
         }
     }

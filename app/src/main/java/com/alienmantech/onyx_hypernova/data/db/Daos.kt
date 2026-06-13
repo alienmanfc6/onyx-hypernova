@@ -75,7 +75,7 @@ interface RankedItemDao {
 @Dao
 interface TagDao {
 
-    @Query("SELECT * FROM tags ORDER BY name ASC")
+    @Query("SELECT * FROM tags ORDER BY lastUsedAt DESC, name COLLATE NOCASE ASC")
     fun getAllTags(): Flow<List<TagEntity>>
 
     @Query(
@@ -103,6 +103,9 @@ interface TagDao {
 
     @Query("UPDATE tags SET name = :name WHERE id = :tagId")
     suspend fun updateTagName(tagId: Long, name: String)
+
+    @Query("UPDATE tags SET lastUsedAt = :lastUsedAt WHERE id = :tagId")
+    suspend fun updateTagLastUsedAt(tagId: Long, lastUsedAt: Long)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCrossRef(crossRef: ItemTagCrossRef)

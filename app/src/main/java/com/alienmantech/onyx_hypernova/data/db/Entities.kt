@@ -36,7 +36,8 @@ data class RankedItemEntity(
 @Entity(tableName = "tags")
 data class TagEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String
+    val name: String,
+    val lastUsedAt: Long = 0
 )
 
 data class TagSummary(

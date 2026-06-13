@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.room.Room
 import com.alienmantech.onyx_hypernova.data.db.MIGRATION_1_2
 import com.alienmantech.onyx_hypernova.data.db.MIGRATION_2_3
+import com.alienmantech.onyx_hypernova.data.db.MIGRATION_3_4
 import com.alienmantech.onyx_hypernova.data.db.RankItDatabase
 import com.alienmantech.onyx_hypernova.data.db.RankedItemDao
 import com.alienmantech.onyx_hypernova.data.db.RankedListDao
@@ -24,7 +25,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): RankItDatabase =
         Room.databaseBuilder(context, RankItDatabase::class.java, "rankit.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
     @Provides

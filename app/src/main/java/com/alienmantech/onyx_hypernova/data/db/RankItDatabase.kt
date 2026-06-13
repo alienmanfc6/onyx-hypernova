@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [RankedListEntity::class, RankedItemEntity::class, TagEntity::class, ItemTagCrossRef::class],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class RankItDatabase : RoomDatabase() {
