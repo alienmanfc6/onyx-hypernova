@@ -1,5 +1,6 @@
 package com.alienmantech.onyx_hypernova.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,9 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import com.alienmantech.onyx_hypernova.data.badges.BadgeDefinition
 import com.alienmantech.onyx_hypernova.ui.theme.notePadDialogColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadFieldColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadFieldFocusColor
@@ -366,6 +370,114 @@ fun TagPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(selectedTags) }) { Text("Done", color = inkColor) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = inkColor) }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BadgePickerDialog(
+    currentBadgeId: String?,
+    badges: List<BadgeDefinition>,
+    onConfirm: (String?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedBadgeId by remember(currentBadgeId) { mutableStateOf(currentBadgeId) }
+    var isMenuExpanded by remember { mutableStateOf(false) }
+    val selectedBadge = remember(selectedBadgeId, badges) {
+        badges.firstOrNull { it.id == selectedBadgeId }
+    }
+    val inkColor = notePadInkColor()
+    val dialogColor = notePadDialogColor()
+    val menuColor = notePadFieldColor()
+    val textFieldColors = notePadDialogTextFieldColors()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = dialogColor,
+        title = { Text("Edit Badge") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = isMenuExpanded,
+                    onExpandedChange = { isMenuExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedBadge?.title ?: "None",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Badge") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
+                        },
+                        colors = textFieldColors,
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isMenuExpanded,
+                        onDismissRequest = { isMenuExpanded = false },
+                        modifier = Modifier.background(menuColor)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("None", color = inkColor) },
+                            modifier = Modifier.background(menuColor),
+                            onClick = {
+                                selectedBadgeId = null
+                                isMenuExpanded = false
+                            }
+                        )
+                        badges.forEach { badge ->
+                            DropdownMenuItem(
+                                text = { Text(badge.title, color = inkColor) },
+                                modifier = Modifier.background(menuColor),
+                                onClick = {
+                                    selectedBadgeId = badge.id
+                                    isMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Surface(
+                    color = notePadFieldColor(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedBadge != null) {
+                            Image(
+                                painter = painterResource(selectedBadge.largeResId),
+                                contentDescription = selectedBadge.title,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 180.dp)
+                            )
+                        } else {
+                            Text(
+                                text = "No badge selected",
+                                color = inkColor.copy(alpha = 0.75f),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedBadgeId) }) {
+                Text("Done", color = inkColor)
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel", color = inkColor) }

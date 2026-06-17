@@ -30,7 +30,8 @@ data class RankedItemEntity(
     val listId: Long,
     val name: String,
     val position: Int,  // 0-based; rank displayed as position + 1
-    val color: String? = null
+    val color: String? = null,
+    val badgeId: String? = null
 )
 
 @Entity(tableName = "tags")

@@ -2,6 +2,7 @@ package com.alienmantech.onyx_hypernova.ui.listdetail
 
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,15 +27,18 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.alienmantech.onyx_hypernova.data.badges.BadgeCatalog
 import com.alienmantech.onyx_hypernova.data.db.RankedItemEntity
 import com.alienmantech.onyx_hypernova.data.db.TagEntity
 import com.alienmantech.onyx_hypernova.ui.components.AddItemWithTagsDialog
+import com.alienmantech.onyx_hypernova.ui.components.BadgePickerDialog
 import com.alienmantech.onyx_hypernova.ui.components.ConfirmDeleteDialog
 import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialog
 import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialogMode
@@ -78,6 +82,7 @@ fun ListDetailScreen(
     var itemToRename by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemToDelete by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemToRecolor by remember { mutableStateOf<RankedItemEntity?>(null) }
+    var itemToEditBadge by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemToEditTags by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemToMove by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemToCopy by remember { mutableStateOf<RankedItemEntity?>(null) }
@@ -396,6 +401,14 @@ fun ListDetailScreen(
                 }
             )
             ListItem(
+                headlineContent = { Text("Edit Badge") },
+                leadingContent = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    itemWithMenu = null
+                    itemToEditBadge = item
+                }
+            )
+            ListItem(
                 headlineContent = { Text("Edit Tags") },
                 leadingContent = { Icon(Icons.Default.Label, contentDescription = null) },
                 modifier = Modifier.clickable {
@@ -513,6 +526,18 @@ fun ListDetailScreen(
                 itemToEditTags = null
             },
             onDismiss = { itemToEditTags = null }
+        )
+    }
+
+    itemToEditBadge?.let { item ->
+        BadgePickerDialog(
+            currentBadgeId = item.badgeId,
+            badges = BadgeCatalog.badges,
+            onConfirm = { badgeId ->
+                viewModel.updateItemBadge(item, badgeId)
+                itemToEditBadge = null
+            },
+            onDismiss = { itemToEditBadge = null }
         )
     }
 
@@ -678,6 +703,7 @@ private fun RankedItemRow(
     inkColor: Color
 ) {
     val displayColorHex = displayItemColorHex(item.color)
+    val badge = remember(item.badgeId) { BadgeCatalog.badgeForId(item.badgeId) }
     val parsedItemColor = remember(displayColorHex) {
         displayColorHex?.let { hex ->
             runCatching { Color(AndroidColor.parseColor(hex)) }.getOrDefault(Color.Gray)
@@ -705,6 +731,7 @@ private fun RankedItemRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
+                modifier = Modifier.widthIn(min = 44.dp),
                 horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -724,6 +751,15 @@ private fun RankedItemRow(
             }
 
             Spacer(modifier = Modifier.width(12.dp))
+
+            badge?.let {
+                Image(
+                    painter = painterResource(it.largeResId),
+                    contentDescription = it.title,
+                    modifier = Modifier.size(38.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+            }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(

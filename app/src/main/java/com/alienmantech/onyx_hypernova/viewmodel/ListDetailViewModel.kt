@@ -180,6 +180,10 @@ class ListDetailViewModel @Inject constructor(
         viewModelScope.launch { repo.setTagsForItem(item.id, tags) }
     }
 
+    fun updateItemBadge(item: RankedItemEntity, badgeId: String?) {
+        viewModelScope.launch { repo.setBadgeForItem(item.id, badgeId) }
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
     }

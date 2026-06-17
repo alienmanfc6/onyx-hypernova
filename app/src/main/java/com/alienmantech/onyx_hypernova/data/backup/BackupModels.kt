@@ -17,5 +17,6 @@ data class BackupItem(
     val name: String,
     val position: Int,
     val color: String? = null,
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val badgeId: String? = null
 )

@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.alienmantech.onyx_hypernova.data.backup.BackupFile
 import com.alienmantech.onyx_hypernova.data.backup.BackupItem
 import com.alienmantech.onyx_hypernova.data.backup.BackupList
+import com.alienmantech.onyx_hypernova.data.badges.BadgeCatalog
 import com.alienmantech.onyx_hypernova.data.db.*
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -84,6 +85,12 @@ class RankItRepository @Inject constructor(
 
     suspend fun updateItemColor(item: RankedItemEntity, color: String?) =
         itemDao.updateItemColor(item.id, color)
+
+    suspend fun setBadgeForItem(itemId: Long, badgeId: String?) {
+        val item = itemDao.getItemById(itemId) ?: return
+        itemDao.updateItem(item.copy(badgeId = BadgeCatalog.normalizeBadgeId(badgeId)))
+        touchList(item.listId)
+    }
 
     /** Persist a full reordered list, updating each item's position index. */
     suspend fun reorderItems(items: List<RankedItemEntity>) {
@@ -200,7 +207,8 @@ class RankItRepository @Inject constructor(
                         name = item.name,
                         position = item.position,
                         color = item.color,
-                        tags = tagDao.getTagsForItemOnce(item.id).map { it.name }
+                        tags = tagDao.getTagsForItemOnce(item.id).map { it.name },
+                        badgeId = item.badgeId
                     )
                 }
             )
@@ -216,7 +224,13 @@ class RankItRepository @Inject constructor(
             )
             bl.items.forEach { bi ->
                 val itemId = itemDao.insertItem(
-                    RankedItemEntity(listId = listId, name = bi.name, position = bi.position, color = bi.color)
+                    RankedItemEntity(
+                        listId = listId,
+                        name = bi.name,
+                        position = bi.position,
+                        color = bi.color,
+                        badgeId = BadgeCatalog.normalizeBadgeId(bi.badgeId)
+                    )
                 )
                 setTagsForItem(itemId, bi.tags)
             }
