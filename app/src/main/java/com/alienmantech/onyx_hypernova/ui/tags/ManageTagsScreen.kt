@@ -25,7 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,6 +48,7 @@ import com.alienmantech.onyx_hypernova.data.db.TagSummary
 import com.alienmantech.onyx_hypernova.data.repository.TagRenameResult
 import com.alienmantech.onyx_hypernova.ui.components.ConfirmDeleteDialog
 import com.alienmantech.onyx_hypernova.ui.components.TextInputDialog
+import com.alienmantech.onyx_hypernova.ui.components.notePadDialogTextFieldColors
 import com.alienmantech.onyx_hypernova.ui.theme.notePadInkColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadLineColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadPageColor
@@ -68,7 +68,7 @@ fun ManageTagsScreen(
     val pageColor = notePadPageColor()
     val lineColor = notePadLineColor()
     val surfaceColor = notePadSurfaceColor()
-    val fieldColor = MaterialTheme.colorScheme.surfaceVariant
+    val searchFieldColors = notePadDialogTextFieldColors()
 
     var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -122,10 +122,7 @@ fun ManageTagsScreen(
                     capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Search
                 ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = fieldColor,
-                    unfocusedContainerColor = fieldColor
-                ),
+                colors = searchFieldColors,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)

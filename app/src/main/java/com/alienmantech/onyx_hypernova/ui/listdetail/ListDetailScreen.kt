@@ -70,6 +70,7 @@ fun ListDetailScreen(
     val pageColor = notePadPageColor()
     val lineColor = notePadLineColor()
     val searchFieldColors = notePadDialogTextFieldColors()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var showTags by rememberSaveable { mutableStateOf(true) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -82,7 +83,6 @@ fun ListDetailScreen(
     var itemToCopy by remember { mutableStateOf<RankedItemEntity?>(null) }
     var itemWithMenu by remember { mutableStateOf<RankedItemEntity?>(null) }
     var showOverflowMenu by remember { mutableStateOf(false) }
-    var isGroupedByTag by rememberSaveable { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState()
     val rankByItemId = remember(state.items) {
         state.items.mapIndexed { index, item -> item.id to (index + 1) }.toMap()
@@ -129,8 +129,22 @@ fun ListDetailScreen(
         }
     }
 
+    LaunchedEffect(viewModel, snackbarHostState) {
+        viewModel.reorderFeedback.collect { feedback ->
+            val result = snackbarHostState.showSnackbar(
+                message = feedback.message,
+                actionLabel = feedback.undoLabel,
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoLastReorder()
+            }
+        }
+    }
+
     Scaffold(
         containerColor = pageColor,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -179,20 +193,16 @@ fun ListDetailScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        if (isGroupedByTag) "Show Flat List" else "Group by Tag"
-                                    )
-                                },
+                                text = { Text(if (state.isGroupedByTag) "Show Flat List" else "Group by Tag") },
                                 leadingIcon = {
                                     Icon(
-                                        if (isGroupedByTag) Icons.Default.ViewAgenda else Icons.Default.ViewStream,
+                                        if (state.isGroupedByTag) Icons.Default.ViewAgenda else Icons.Default.ViewStream,
                                         contentDescription = null
                                     )
                                 },
                                 onClick = {
                                     showOverflowMenu = false
-                                    isGroupedByTag = !isGroupedByTag
+                                    viewModel.setGroupByTag(!state.isGroupedByTag)
                                 }
                             )
                         }
@@ -250,7 +260,7 @@ fun ListDetailScreen(
                     )
                 }
 
-                !state.isSearchActive && isGroupedByTag -> {
+                !state.isSearchActive && state.isGroupedByTag -> {
                     GroupedItemsList(
                         sections = state.groupedSections,
                         rankByItemId = rankByItemId,
@@ -319,8 +329,9 @@ fun ListDetailScreen(
                                                     Icons.Default.DragHandle,
                                                     contentDescription = "Drag to reorder",
                                                     tint = inkColor.copy(alpha = 0.5f),
-                                                    modifier = Modifier.draggableHandle(
+                                                    modifier = Modifier.longPressDraggableHandle(
                                                         onDragStarted = {
+                                                            viewModel.onDragStarted(item.id, state.items)
                                                             isDragging = true
                                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         },

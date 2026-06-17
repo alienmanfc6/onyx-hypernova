@@ -10,15 +10,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ThemeRepository @Inject constructor(
+class ListUiPreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val DARK_MODE_KEY = booleanPreferencesKey("dark_mode")
+    fun isGroupByTag(listId: Long): Flow<Boolean> = context.dataStore.data
+        .map { prefs -> prefs[groupByTagKey(listId)] ?: false }
 
-    val isDarkMode: Flow<Boolean> = context.dataStore.data
-        .map { prefs -> prefs[DARK_MODE_KEY] ?: false }
-
-    suspend fun setDarkMode(enabled: Boolean) {
-        context.dataStore.edit { prefs -> prefs[DARK_MODE_KEY] = enabled }
+    suspend fun setGroupByTag(listId: Long, enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[groupByTagKey(listId)] = enabled
+        }
     }
+
+    private fun groupByTagKey(listId: Long) = booleanPreferencesKey("list_${listId}_group_by_tag")
 }

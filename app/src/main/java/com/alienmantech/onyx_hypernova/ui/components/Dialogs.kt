@@ -1,5 +1,6 @@
 package com.alienmantech.onyx_hypernova.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -252,6 +253,7 @@ fun AddItemWithTagsDialog(
     val focusRequester = remember { FocusRequester() }
     val inkColor = notePadInkColor()
     val dialogColor = notePadDialogColor()
+    val menuColor = notePadFieldColor()
     val textFieldColors = notePadDialogTextFieldColors()
 
     AlertDialog(
@@ -303,11 +305,13 @@ fun AddItemWithTagsDialog(
                     )
                     ExposedDropdownMenu(
                         expanded = isRankMenuExpanded,
-                        onDismissRequest = { isRankMenuExpanded = false }
+                        onDismissRequest = { isRankMenuExpanded = false },
+                        modifier = Modifier.background(menuColor)
                     ) {
                         rankOptions.forEach { rank ->
                             DropdownMenuItem(
-                                text = { Text(rank.toString()) },
+                                text = { Text(rank.toString(), color = inkColor) },
+                                modifier = Modifier.background(menuColor),
                                 onClick = {
                                     selectedRank = rank
                                     isRankMenuExpanded = false
@@ -396,6 +400,7 @@ fun ItemTransferDialog(
     var isRankMenuExpanded by remember { mutableStateOf(false) }
     val inkColor = notePadInkColor()
     val dialogColor = notePadDialogColor()
+    val menuColor = notePadFieldColor()
     val textFieldColors = notePadDialogTextFieldColors()
     val actionLabel = if (mode == ItemTransferDialogMode.MOVE) "Move" else "Copy"
 
@@ -432,11 +437,13 @@ fun ItemTransferDialog(
                     )
                     ExposedDropdownMenu(
                         expanded = isListMenuExpanded,
-                        onDismissRequest = { isListMenuExpanded = false }
+                        onDismissRequest = { isListMenuExpanded = false },
+                        modifier = Modifier.background(menuColor)
                     ) {
                         availableLists.forEach { option ->
                             DropdownMenuItem(
-                                text = { Text(option.list.name) },
+                                text = { Text(option.list.name, color = inkColor) },
+                                modifier = Modifier.background(menuColor),
                                 onClick = {
                                     selectedListId = option.list.id
                                     selectedRank = option.itemCount + 1
@@ -468,11 +475,13 @@ fun ItemTransferDialog(
                     )
                     ExposedDropdownMenu(
                         expanded = isRankMenuExpanded,
-                        onDismissRequest = { isRankMenuExpanded = false }
+                        onDismissRequest = { isRankMenuExpanded = false },
+                        modifier = Modifier.background(menuColor)
                     ) {
                         rankOptions.forEach { rank ->
                             DropdownMenuItem(
-                                text = { Text(rank.toString()) },
+                                text = { Text(rank.toString(), color = inkColor) },
+                                modifier = Modifier.background(menuColor),
                                 onClick = {
                                     selectedRank = rank
                                     isRankMenuExpanded = false

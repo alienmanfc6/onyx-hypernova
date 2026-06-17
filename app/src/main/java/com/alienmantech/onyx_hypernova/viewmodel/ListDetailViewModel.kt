@@ -6,8 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.alienmantech.onyx_hypernova.data.db.RankedItemEntity
 import com.alienmantech.onyx_hypernova.data.db.RankedListEntity
 import com.alienmantech.onyx_hypernova.data.db.TagEntity
-import com.alienmantech.onyx_hypernova.data.repository.RankItRepository.ItemTransferResult
+import com.alienmantech.onyx_hypernova.data.repository.ListUiPreferencesRepository
 import com.alienmantech.onyx_hypernova.data.repository.RankItRepository
+import com.alienmantech.onyx_hypernova.data.repository.RankItRepository.ItemTransferResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -22,9 +23,15 @@ data class ListDetailUiState(
     val itemTags: Map<Long, List<TagEntity>> = emptyMap(),
     val allTags: List<TagEntity> = emptyList(),
     val groupedSections: List<TagGroupedItemsSection> = emptyList(),
+    val isGroupedByTag: Boolean = false,
     val availableLists: List<TransferListOption> = emptyList(),
     val transferErrorMessage: String? = null,
     val transferSuccessToken: Int = 0
+)
+
+data class ReorderFeedback(
+    val message: String,
+    val undoLabel: String = "Undo"
 )
 
 data class TagGroupedItemsSection(
@@ -40,6 +47,7 @@ data class TransferListOption(
 @HiltViewModel
 class ListDetailViewModel @Inject constructor(
     private val repo: RankItRepository,
+    private val listUiPreferencesRepository: ListUiPreferencesRepository,
     savedState: SavedStateHandle
 ) : ViewModel() {
 
@@ -52,7 +60,12 @@ class ListDetailViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     private val _transferErrorMessage = MutableStateFlow<String?>(null)
     private val _transferSuccessToken = MutableStateFlow(0)
+    private val _reorderFeedback = MutableSharedFlow<ReorderFeedback>(extraBufferCapacity = 1)
     private val listFlow = flow { emit(repo.getListById(listId)) }
+    private val groupByTagFlow = listUiPreferencesRepository.isGroupByTag(listId)
+    private var dragStartItemId: Long? = null
+    private var dragStartItems: List<RankedItemEntity>? = null
+    private var pendingUndoItems: List<RankedItemEntity>? = null
 
     private val dbItems: Flow<List<RankedItemEntity>> = repo.getItemsForList(listId)
     private val availableListsFlow: Flow<List<TransferListOption>> = repo.getAllLists()
@@ -119,11 +132,13 @@ class ListDetailViewModel @Inject constructor(
 
     val uiState: StateFlow<ListDetailUiState> = combine(
         baseUiStateFlow,
+        groupByTagFlow,
         availableListsFlow,
         _transferErrorMessage,
         _transferSuccessToken
-    ) { baseState, availableLists, transferErrorMessage, transferSuccessToken ->
+    ) { baseState, isGroupedByTag, availableLists, transferErrorMessage, transferSuccessToken ->
         baseState.copy(
+            isGroupedByTag = isGroupedByTag,
             availableLists = availableLists,
             transferErrorMessage = transferErrorMessage,
             transferSuccessToken = transferSuccessToken
@@ -131,6 +146,8 @@ class ListDetailViewModel @Inject constructor(
     }
         .catch { /* TODO: surface DB errors to UI */ }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListDetailUiState())
+
+    val reorderFeedback: SharedFlow<ReorderFeedback> = _reorderFeedback.asSharedFlow()
 
     fun addItem(name: String, initialRank: Int, tags: List<String> = emptyList()) {
         if (name.isBlank()) return
@@ -201,16 +218,66 @@ class ListDetailViewModel @Inject constructor(
         _transferErrorMessage.value = null
     }
 
+    fun setGroupByTag(enabled: Boolean) {
+        viewModelScope.launch {
+            listUiPreferencesRepository.setGroupByTag(listId, enabled)
+        }
+    }
+
     /** Called on every drag move — updates local UI immediately. */
     fun onDragMove(reordered: List<RankedItemEntity>) {
         _localItems.value = reordered
     }
 
+    fun onDragStarted(itemId: Long, currentItems: List<RankedItemEntity>) {
+        dragStartItemId = itemId
+        dragStartItems = currentItems
+    }
+
     /** Called when drag is released — persist to DB and clear local override. */
     fun onDragEnd(reordered: List<RankedItemEntity>) {
         viewModelScope.launch {
+            val originalItems = dragStartItems
+            val draggedItemId = dragStartItemId
+            dragStartItems = null
+            dragStartItemId = null
+
+            if (originalItems == null || draggedItemId == null) {
+                repo.reorderItems(reordered)
+                _localItems.value = null
+                return@launch
+            }
+
+            val originalIndex = originalItems.indexOfFirst { it.id == draggedItemId }
+            val newIndex = reordered.indexOfFirst { it.id == draggedItemId }
+            val draggedItem = reordered.firstOrNull { it.id == draggedItemId }
+
+            if (originalIndex == -1 || newIndex == -1 || draggedItem == null) {
+                repo.reorderItems(reordered)
+                _localItems.value = null
+                return@launch
+            }
+
+            if (originalIndex == newIndex) {
+                pendingUndoItems = null
+                _localItems.value = null
+                return@launch
+            }
+
             repo.reorderItems(reordered)
+            pendingUndoItems = originalItems
             _localItems.value = null
+            _reorderFeedback.emit(
+                ReorderFeedback(message = "Moved \"${draggedItem.name}\" to #${newIndex + 1}")
+            )
+        }
+    }
+
+    fun undoLastReorder() {
+        val snapshot = pendingUndoItems ?: return
+        viewModelScope.launch {
+            repo.reorderItems(snapshot)
+            pendingUndoItems = null
         }
     }
 
