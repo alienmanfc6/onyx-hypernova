@@ -19,11 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.alienmantech.onyx_hypernova.data.db.RankedListEntity
 import com.alienmantech.onyx_hypernova.ui.components.ConfirmDeleteDialog
 import com.alienmantech.onyx_hypernova.ui.components.ConfirmImportDialog
+import com.alienmantech.onyx_hypernova.ui.components.InlinePipeCaptionText
 import com.alienmantech.onyx_hypernova.ui.components.TextInputDialog
 import com.alienmantech.onyx_hypernova.ui.theme.notePadInkColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadLineColor
@@ -270,11 +272,14 @@ private fun ListRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                InlinePipeCaptionText(
                     text = item.list.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = inkColor
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = inkColor,
+                    captionStyle = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
