@@ -40,6 +40,7 @@ import com.alienmantech.onyx_hypernova.data.db.TagEntity
 import com.alienmantech.onyx_hypernova.ui.components.AddItemWithTagsDialog
 import com.alienmantech.onyx_hypernova.ui.components.BadgePickerDialog
 import com.alienmantech.onyx_hypernova.ui.components.ConfirmDeleteDialog
+import com.alienmantech.onyx_hypernova.ui.components.InlinePipeCaptionText
 import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialog
 import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialogMode
 import com.alienmantech.onyx_hypernova.ui.components.TagPickerDialog
@@ -731,7 +732,7 @@ private fun RankedItemRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = Modifier.widthIn(min = 44.dp),
+                modifier = Modifier.widthIn(min = if (badge != null) 28.dp else 44.dp),
                 horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -758,13 +759,16 @@ private fun RankedItemRow(
                     contentDescription = it.title,
                     modifier = Modifier.size(38.dp)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                InlinePipeCaptionText(
                     text = item.name,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = inkColor,
+                    captionStyle = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.fillMaxWidth(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
