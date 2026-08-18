@@ -10,6 +10,7 @@ class BadgeCatalogTest {
     fun normalizeBadgeId_returnsStableIdForKnownBadge() {
         assertEquals("night", BadgeCatalog.normalizeBadgeId("night"))
         assertEquals("trimless", BadgeCatalog.normalizeBadgeId("trimless"))
+        assertEquals("wet_feather", BadgeCatalog.normalizeBadgeId("wet_feather"))
     }
 
     @Test
@@ -20,5 +21,6 @@ class BadgeCatalogTest {
     @Test
     fun normalizeBadgeId_trimsAndLowercasesKnownBadge() {
         assertEquals("night", BadgeCatalog.normalizeBadgeId(" Night "))
+        assertEquals("wet_feather", BadgeCatalog.normalizeBadgeId(" WET_FEATHER "))
     }
 }
