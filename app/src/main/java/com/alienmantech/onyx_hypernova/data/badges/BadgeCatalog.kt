@@ -20,6 +20,11 @@ object BadgeCatalog {
             id = "trimless",
             title = "Trimless",
             largeResId = R.drawable.badge_trimless_large
+        ),
+        BadgeDefinition(
+            id = "wet_feather",
+            title = "Wet Feather",
+            largeResId = R.drawable.badge_wet_feather_large
         )
     )
 
