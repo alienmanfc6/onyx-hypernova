@@ -66,7 +66,7 @@ fun notePadDialogTextFieldColors(): TextFieldColors {
     )
 }
 
-/** Single-field text input dialog used for create / rename operations. */
+/** Single-field text input dialog used for tag create / rename operations. */
 @Composable
 fun TextInputDialog(
     title: String,
@@ -137,21 +137,36 @@ fun TextInputDialog(
 fun TagPickerContent(
     selectedTags: List<String>,
     allTags: List<String>,
-    onTagsChanged: (List<String>) -> Unit
+    onTagsChanged: (List<String>) -> Unit,
+    onCommitPendingTagChanged: ((() -> List<String>) -> Unit)? = null
 ) {
     var newTagText by remember { mutableStateOf("") }
     val suggestionsScrollState = rememberScrollState()
     val inkColor = notePadInkColor()
     val chipColor = notePadFieldColor()
     val textFieldColors = notePadDialogTextFieldColors()
-    val selectedTagsLower = selectedTags.map { it.lowercase() }.toSet()
+    val selectedTagsByLower = selectedTags.associateBy { it.lowercase() }
+    val allTagsByLower = allTags.associateBy { it.lowercase() }
 
-    fun addTag(tag: String) {
+    fun addTag(tag: String): List<String> {
         val trimmed = tag.trim()
-        if (trimmed.isNotBlank() && trimmed.lowercase() !in selectedTagsLower) {
-            onTagsChanged(selectedTags + trimmed)
+        if (trimmed.isBlank()) {
+            newTagText = ""
+            return selectedTags
+        }
+
+        val normalized = trimmed.lowercase()
+        val resolvedTag = allTagsByLower[normalized] ?: trimmed
+        val updatedTags = selectedTagsByLower[normalized]?.let { selectedTags } ?: (selectedTags + resolvedTag)
+        if (updatedTags !== selectedTags) {
+            onTagsChanged(updatedTags)
         }
         newTagText = ""
+        return updatedTags
+    }
+
+    LaunchedEffect(selectedTags, allTags, onCommitPendingTagChanged) {
+        onCommitPendingTagChanged?.invoke { addTag(newTagText) }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -208,7 +223,7 @@ fun TagPickerContent(
         }
 
         // Suggestions: previously used tags not already selected
-        val suggestions = allTags.filter { it.lowercase() !in selectedTagsLower }
+        val suggestions = allTags.filter { it.lowercase() !in selectedTagsByLower }
         if (suggestions.isNotEmpty()) {
             Column(
                 modifier = Modifier
@@ -242,6 +257,7 @@ fun TagPickerContent(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddItemWithTagsDialog(
+    initialName: String = "",
     allTags: List<String>,
     currentItemCount: Int,
     errorMessage: String? = null,
@@ -249,8 +265,11 @@ fun AddItemWithTagsDialog(
     onConfirm: (name: String, tags: List<String>, initialRank: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
+    val initialParts = remember(initialName) { parsePipeDelimitedTitle(initialName) }
+    var title by remember(initialName) { mutableStateOf(initialParts.title) }
+    var caption by remember(initialName) { mutableStateOf(initialParts.caption) }
     var selectedTags by remember { mutableStateOf(emptyList<String>()) }
+    var commitPendingTag by remember { mutableStateOf<(() -> List<String>)?>(null) }
     val rankOptions = remember(currentItemCount) { (1..(currentItemCount + 1)).toList() }
     var selectedRank by remember(currentItemCount) { mutableIntStateOf(currentItemCount + 1) }
     var isRankMenuExpanded by remember { mutableStateOf(false) }
@@ -259,6 +278,7 @@ fun AddItemWithTagsDialog(
     val dialogColor = notePadDialogColor()
     val menuColor = notePadFieldColor()
     val textFieldColors = notePadDialogTextFieldColors()
+    fun currentName(): String = buildPipeDelimitedTitle(title, caption)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -267,28 +287,50 @@ fun AddItemWithTagsDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    value = name,
+                    value = title,
                     onValueChange = {
-                        name = it
+                        title = it
                         onNameChange?.invoke()
                     },
-                    placeholder = { Text("Item name") },
+                    placeholder = { Text("Item title") },
                     singleLine = true,
                     isError = errorMessage != null,
                     supportingText = errorMessage?.let { msg -> { Text(msg) } },
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            if (name.isNotBlank()) onConfirm(name, selectedTags, selectedRank)
-                        }
+                        imeAction = ImeAction.Next
                     ),
                     colors = textFieldColors,
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
+                )
+                OutlinedTextField(
+                    value = caption,
+                    onValueChange = {
+                        caption = it
+                        onNameChange?.invoke()
+                    },
+                    placeholder = { Text("Item caption") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            val combinedName = currentName()
+                            if (combinedName.isNotBlank()) {
+                                onConfirm(
+                                    combinedName,
+                                    commitPendingTag?.invoke() ?: selectedTags,
+                                    selectedRank
+                                )
+                            }
+                        }
+                    ),
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 ExposedDropdownMenuBox(
                     expanded = isRankMenuExpanded,
@@ -327,14 +369,22 @@ fun AddItemWithTagsDialog(
                 TagPickerContent(
                     selectedTags = selectedTags,
                     allTags = allTags,
-                    onTagsChanged = { selectedTags = it }
+                    onTagsChanged = { selectedTags = it },
+                    onCommitPendingTagChanged = { commitPendingTag = it }
                 )
             }
         },
         confirmButton = {
+            val combinedName = currentName()
             TextButton(
-                onClick = { onConfirm(name, selectedTags, selectedRank) },
-                enabled = name.isNotBlank()
+                onClick = {
+                    onConfirm(
+                        combinedName,
+                        commitPendingTag?.invoke() ?: selectedTags,
+                        selectedRank
+                    )
+                },
+                enabled = combinedName.isNotBlank()
             ) { Text("Add", color = inkColor) }
         },
         dismissButton = {
@@ -355,6 +405,7 @@ fun TagPickerDialog(
     onDismiss: () -> Unit
 ) {
     var selectedTags by remember { mutableStateOf(currentTags) }
+    var commitPendingTag by remember { mutableStateOf<(() -> List<String>)?>(null) }
     val inkColor = notePadInkColor()
 
     AlertDialog(
@@ -365,11 +416,14 @@ fun TagPickerDialog(
             TagPickerContent(
                 selectedTags = selectedTags,
                 allTags = allTags,
-                onTagsChanged = { selectedTags = it }
+                onTagsChanged = { selectedTags = it },
+                onCommitPendingTagChanged = { commitPendingTag = it }
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(selectedTags) }) { Text("Done", color = inkColor) }
+            TextButton(onClick = { onConfirm(commitPendingTag?.invoke() ?: selectedTags) }) {
+                Text("Done", color = inkColor)
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel", color = inkColor) }

@@ -44,7 +44,7 @@ import com.alienmantech.onyx_hypernova.ui.components.InlinePipeCaptionText
 import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialog
 import com.alienmantech.onyx_hypernova.ui.components.ItemTransferDialogMode
 import com.alienmantech.onyx_hypernova.ui.components.TagPickerDialog
-import com.alienmantech.onyx_hypernova.ui.components.TextInputDialog
+import com.alienmantech.onyx_hypernova.ui.components.TitleCaptionInputDialog
 import com.alienmantech.onyx_hypernova.ui.components.notePadDialogTextFieldColors
 import com.alienmantech.onyx_hypernova.ui.theme.colorPalette
 import com.alienmantech.onyx_hypernova.ui.theme.displayItemColorHex
@@ -482,9 +482,10 @@ fun ListDetailScreen(
     }
 
     itemToRename?.let { item ->
-        TextInputDialog(
+        TitleCaptionInputDialog(
             title = "Rename Item",
-            placeholder = "Item name",
+            titlePlaceholder = "Item title",
+            captionPlaceholder = "Item caption",
             initialValue = item.name,
             confirmLabel = "Rename",
             onConfirm = { newName ->

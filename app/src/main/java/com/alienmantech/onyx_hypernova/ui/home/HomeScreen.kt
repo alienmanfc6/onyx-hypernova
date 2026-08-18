@@ -26,7 +26,7 @@ import com.alienmantech.onyx_hypernova.data.db.RankedListEntity
 import com.alienmantech.onyx_hypernova.ui.components.ConfirmDeleteDialog
 import com.alienmantech.onyx_hypernova.ui.components.ConfirmImportDialog
 import com.alienmantech.onyx_hypernova.ui.components.InlinePipeCaptionText
-import com.alienmantech.onyx_hypernova.ui.components.TextInputDialog
+import com.alienmantech.onyx_hypernova.ui.components.TitleCaptionInputDialog
 import com.alienmantech.onyx_hypernova.ui.theme.notePadInkColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadLineColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadPageColor
@@ -192,9 +192,10 @@ fun HomeScreen(
     // ── Dialogs ────────────────────────────────────────────────────────────
 
     if (showCreateDialog) {
-        TextInputDialog(
+        TitleCaptionInputDialog(
             title = "New List",
-            placeholder = "List name",
+            titlePlaceholder = "List title",
+            captionPlaceholder = "List caption",
             confirmLabel = "Create",
             onConfirm = { name ->
                 viewModel.createList(name)
@@ -205,9 +206,10 @@ fun HomeScreen(
     }
 
     listToRename?.let { list ->
-        TextInputDialog(
+        TitleCaptionInputDialog(
             title = "Rename List",
-            placeholder = "List name",
+            titlePlaceholder = "List title",
+            captionPlaceholder = "List caption",
             initialValue = list.name,
             confirmLabel = "Rename",
             onConfirm = { newName ->

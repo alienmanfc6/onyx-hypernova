@@ -9,8 +9,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 
-private const val PipeCaptionDelimiter = " | "
-
 @Composable
 fun InlinePipeCaptionText(
     text: String,
@@ -61,18 +59,7 @@ fun InlinePipeCaptionText(
     )
 }
 
-private data class PipeCaptionParts(
-    val title: String,
-    val caption: String
-)
-
-private fun splitPipeCaptionText(text: String): PipeCaptionParts? {
-    val delimiterIndex = text.indexOf(PipeCaptionDelimiter)
-    if (delimiterIndex < 0) return null
-
-    val title = text.substring(0, delimiterIndex)
-    val caption = text.substring(delimiterIndex + PipeCaptionDelimiter.length)
-    if (title.isBlank() || caption.isBlank()) return null
-
-    return PipeCaptionParts(title = title, caption = caption)
+private fun splitPipeCaptionText(text: String): PipeDelimitedTitleParts? {
+    val parts = parsePipeDelimitedTitle(text)
+    return if (parts.caption.isBlank() || parts.title.isBlank()) null else parts
 }
