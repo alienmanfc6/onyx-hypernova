@@ -21,6 +21,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.alienmantech.onyx_hypernova.data.badges.BadgeDefinition
 import com.alienmantech.onyx_hypernova.ui.theme.notePadDialogColor
 import com.alienmantech.onyx_hypernova.ui.theme.notePadFieldColor
@@ -451,6 +452,10 @@ fun BadgePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier
+            .fillMaxWidth(0.96f)
+            .widthIn(max = 640.dp),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         containerColor = dialogColor,
         title = { Text("Edit Badge") },
         text = {
@@ -514,8 +519,9 @@ fun BadgePickerDialog(
                                 contentDescription = selectedBadge.title,
                                 contentScale = ContentScale.Fit,
                                 modifier = Modifier
+                                    .sizeIn(maxWidth = 300.dp, maxHeight = 300.dp)
                                     .fillMaxWidth()
-                                    .heightIn(max = 180.dp)
+                                    .aspectRatio(1f)
                             )
                         } else {
                             Text(
