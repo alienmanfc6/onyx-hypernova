@@ -30,6 +30,11 @@ object BadgeCatalog {
             id = "100th",
             title = "100th",
             largeResId = R.drawable.badge_100th_large
+        ),
+        BadgeDefinition(
+            id = "200th",
+            title = "200th",
+            largeResId = R.drawable.badge_200th_large
         )
     )
 

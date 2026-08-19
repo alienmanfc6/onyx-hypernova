@@ -12,6 +12,7 @@ class BadgeCatalogTest {
         assertEquals("trimless", BadgeCatalog.normalizeBadgeId("trimless"))
         assertEquals("wet_feather", BadgeCatalog.normalizeBadgeId("wet_feather"))
         assertEquals("100th", BadgeCatalog.normalizeBadgeId("100th"))
+        assertEquals("200th", BadgeCatalog.normalizeBadgeId("200th"))
     }
 
     @Test
@@ -24,5 +25,6 @@ class BadgeCatalogTest {
         assertEquals("night", BadgeCatalog.normalizeBadgeId(" Night "))
         assertEquals("wet_feather", BadgeCatalog.normalizeBadgeId(" WET_FEATHER "))
         assertEquals("100th", BadgeCatalog.normalizeBadgeId(" 100TH "))
+        assertEquals("200th", BadgeCatalog.normalizeBadgeId(" 200TH "))
     }
 }
