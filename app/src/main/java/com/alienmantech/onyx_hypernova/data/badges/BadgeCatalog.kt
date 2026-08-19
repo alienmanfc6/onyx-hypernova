@@ -25,6 +25,11 @@ object BadgeCatalog {
             id = "wet_feather",
             title = "Wet Feather",
             largeResId = R.drawable.badge_wet_feather_large
+        ),
+        BadgeDefinition(
+            id = "100th",
+            title = "100th",
+            largeResId = R.drawable.badge_100th_large
         )
     )
 
